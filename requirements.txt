@@ -9,3 +9,4 @@ sympy
 lcapy
 opencv-python-headless
 scikit-rf
+requests
