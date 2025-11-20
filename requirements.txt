@@ -8,3 +8,4 @@ control
 sympy
 lcapy
 opencv-python-headless
+scikit-rf
