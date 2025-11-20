@@ -22,7 +22,7 @@ from sympy import sympify, Matrix, simplify
 import control as ct
 from lcapy import texpr, s
 import matplotlib.patches as patches
-import skrf as rf
+import scikit-rf as rf
 import math
 from lcapy import symbol, nexpr, cos, sin, exp, j, sinc, rect, sincu, delta, sign, H, pi, n, f, k, dt
 import html
@@ -3656,7 +3656,7 @@ def smith():
     import numpy as np
     import matplotlib.pyplot as plt
     import sympy as sp
-    import skrf as rf
+    import scikit-rf as rf
     import mpld3
 
     try:
@@ -5038,3 +5038,4 @@ def IDFT():
 ####################################################################################################
 if __name__ == "__main__":
     app.run(debug=True)
+
