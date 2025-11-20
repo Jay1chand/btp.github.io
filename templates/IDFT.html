@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>IDFT</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .form-container, .parameter-guide, .assistant-container {
+            width: 90%;
+            max-width: 900px;
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+        h1, h2, h3 { margin-top: 0; color: #222; }
+        .description {
+            background: #eef6ff;
+            padding: 14px;
+            border-left: 5px solid #007bff;
+            border-radius: 6px;
+            line-height: 1.6;
+        }
+        form {
+            display: block;
+            max-width: 700px;
+            margin-top: 12px;
+        }
+        label {
+            display: block;
+            margin-top: 12px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-top: 6px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 15px;
+        }
+        button, input[type="submit"] {
+            margin-top: 16px;
+            padding: 10px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-primary:hover { background: #0056b3; }
+        .error { color: #b00020; margin-top: 12px; }
+        .results { max-width: 900px; width: 90%; margin: 20px auto; display: grid; gap: 16px; }
+        .result-block { background: #ffffff; padding: 14px; border-radius: 8px; 
+                        box-shadow: 0 1px 6px rgba(0,0,0,0.04); }
+        pre { background:#f7f7f7; padding:10px; border-radius:6px; 
+              overflow:auto; white-space:pre-wrap; word-break:break-word; }
+    </style>
+</head>
+<body>
+
+    <!-- Info / README -->
+    <div class="info-container" style="max-width:650px;margin:25px auto;padding:15px;">
+        <h1 style="margin-bottom:12px;">IDFT Calculator</h1>
+        <p style="line-height:1.5;margin-bottom:10px;">
+            Compute the <strong>Inverse Discrete Fourier Transform (IDFT)</strong>
+            of a given frequency-domain sequence <em>X[k]</em>.  
+            Enter complex values separated by spaces, such as:<br>
+            <code>1+2j 3-1j 0 4j</code>
+        </p>
+    </div>
+
+    <!-- Input guide -->
+    <div class="parameter-guide" style="max-width:650px;margin:20px auto;padding:10px;font-size:0.95em;">
+        <h2 style="margin-bottom:8px;font-size:1.2em;">📌 Input Guide</h2>
+        <dl style="line-height:1.5;">
+            <dt>Sequence X[k]</dt>
+            <dd>
+                Enter frequency-domain samples as real or complex numbers.<br>
+                Examples:<br>
+                <code>1 2 3 4</code><br>
+                <code>1+2j 0 -1j 4+0j</code>
+            </dd>
+        </dl>
+    </div>
+
+    <!-- Input form -->
+    <div class="form-container" style="max-width:550px;margin:20px auto;padding:15px;">
+        <form method="POST" action="/IDFT">
+            <label for="sequence" style="display:block;margin-bottom:6px;">Enter sequence X[k] (space-separated):</label>
+            <input type="text" id="sequence" name="sequence" placeholder="Example: 1+2j 3-1j 0 4j" required>
+            <input type="submit" class="btn-primary" value="Compute IDFT" style="padding:8px 14px;">
+        </form>
+    </div>
+
+    <!-- Results -->
+    {% if result %}
+    <div class="results">
+        {% if result.error %}
+            <div class="result-block">
+                <p class="error">❌ Error: {{ result.error }}</p>
+            </div>
+        {% else %}
+            <div class="result-block">
+                <h3 style="margin:0 0 8px 0;">IDFT — Reconstructed Time-Domain Sequence x[n]</h3>
+                <pre>{% for line in result.idft %}{{ line }} {% endfor %}</pre>
+            </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Wikipedia Assistant -->
+    <div class="assistant-container" style="max-width:650px;margin:30px auto;padding:10px;">
+        <h3 style="margin-bottom:10px;">📘 Wikipedia Assistant</h3>
+        <p style="color:#555;line-height:1.6;margin-bottom:15px;">
+            Explore Wikipedia explanations about <b>IDFT</b> and 
+            <b>discrete-time sequence reconstruction</b>.
+        </p>
+
+        <textarea id="wiki-query" rows="3" 
+            style="width:100%;padding:10px 12px;margin-bottom:12px;border-radius:6px;
+                   border:1px solid #ccc;font-size:15px;resize:none;">
+IDFT, inverse discrete Fourier transform, sequence reconstruction
+        </textarea><br>
+
+        <button onclick="searchWiki()" 
+            style="padding:10px 20px;font-size:15px;border:none;border-radius:6px;
+                   background-color:#007BFF;color:white;cursor:pointer;">
+            🔍 Search Wikipedia
+        </button>
+
+        <div id="wiki-result" 
+            style="margin-top:20px;padding:15px 18px;background:#fafafa;
+                   border-radius:8px;border:1px solid #ddd;line-height:1.7;
+                   font-size:15px;color:#333;min-height:120px;">
+            ⏳ Loading default Wikipedia content...
+        </div>
+
+        <button id="refresh-btn" onclick="refreshWiki()" 
+            style="margin-top:12px;padding:8px 16px;background:#17a2b8;color:white;
+                   border:none;border-radius:6px;cursor:pointer;font-size:15px;">
+            🔄 Refresh Content
+        </button>
+    </div>
+
+    <!-- Wikipedia Script (unchanged) -->
+    <script>
+    async function searchWiki() {
+        const query = document.getElementById("wiki-query").value.trim();
+        const resultDiv = document.getElementById("wiki-result");
+        resultDiv.innerHTML = "⏳ Searching Wikipedia...";
+
+        const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`;
+
+        try {
+            const searchRes = await fetch(searchUrl);
+            const data = await searchRes.json();
+
+            if (!data.query || data.query.search.length === 0) {
+                resultDiv.innerHTML = "❌ No results found on Wikipedia.";
+                return;
+            }
+
+            const topResults = data.query.search.slice(0, 2);
+            let html = `<h4 style="margin-top:0;font-size:18px;color:#007BFF;">Wikipedia Overview: ${query}</h4>`;
+
+            for (const r of topResults) {
+                const title = r.title;
+                const pageUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(title)}`;
+                const extractUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&explaintext&titles=${encodeURIComponent(title)}&format=json&origin=*`;
+
+                try {
+                    const extractRes = await fetch(extractUrl);
+                    const extractData = await extractRes.json();
+                    const pages = extractData.query.pages;
+                    const extractText = Object.values(pages)[0].extract || "(No summary available)";
+                    const shortText = extractText.split(/\.\s+/).slice(0, 5).join('. ') + '.';
+
+                    html += `
+                        <div style="margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid #eee;">
+                            <p style="margin:0;">
+                                <b style="color:#0066cc;font-size:17px;">${title}</b><br>
+                                <span style="line-height:1.6;color:#333;">${shortText}</span>
+                            </p>
+                            <a href="${pageUrl}" target="_blank"
+                               style="display:inline-block;margin-top:8px;color:#007BFF;text-decoration:none;font-weight:bold;">
+                               📖 Read full article →
+                            </a>
+                        </div>
+                    `;
+                } catch {
+                    html += `<p style="color:red;">⚠️ Failed to load extract for ${title}</p>`;
+                }
+            }
+
+            html += `<p style="text-align:center;color:#666;margin-top:15px;">— End of summary —</p>`;
+            resultDiv.innerHTML = html;
+
+        } catch (error) {
+            resultDiv.innerHTML = "❌ Couldn't fetch Wikipedia data.";
+        }
+    }
+
+    function refreshWiki() {
+        const resultDiv = document.getElementById("wiki-result");
+        resultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+        resultDiv.innerHTML = "🔁 Refreshing Wikipedia content...";
+        setTimeout(() => searchWiki(), 600);
+    }
+
+    window.onload = () => {
+        setTimeout(searchWiki, 800);
+    };
+    </script>
+
+</body>
+</html>

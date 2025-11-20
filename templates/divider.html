@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amplitude Modulation and Demodulation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .form-container, .plot-container, .assistant-container, .parameter-guide {
+            width: 80%;
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            margin: 8px 0;
+        }
+        input[type="submit"], button {
+            padding: 10px;
+            background-color: #28a745;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+        input[type="submit"]:hover, button:hover {
+            background-color: #218838;
+        }
+        .error {
+            color: red;
+        }
+        iframe {
+            width: 100%;
+            height: 500px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+        }
+        .parameter-guide h2 {
+            margin-top: 0;
+        }
+        .param-grid {
+            display: grid;
+            grid-template-columns: 1fr 3fr;
+            gap: 10px 20px;
+            align-items: start;
+        }
+        .param-grid dt {
+            font-weight: bold;
+            color: #333;
+        }
+        .param-grid dd {
+            margin: 0;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <!-- Info / README section -->
+    <div class="info-container" style="max-width:650px;margin:25px auto;padding:15px;text-align:center;">
+        <h1 style="margin-bottom:12px;">Voltage Divider BJT Calculator</h1>
+        <p style="line-height:1.5;margin-bottom:10px;">
+            This calculator computes the operating point and currents of a <strong>BJT</strong> in a voltage divider bias configuration.
+            Enter the supply voltage, resistances, transistor parameters, and observe the transistor mode, currents, and voltages.
+        </p>
+        <!-- Circuit image -->
+        <img src="{{ url_for('static', filename='./1.png') }}" 
+             alt="Voltage Divider BJT Circuit" 
+             style="max-width:100%;height:auto;margin-top:10px;border:1px solid #ccc;padding:5px;">
+    </div>
+
+    <!-- Input form -->
+    <div class="form-container" style="max-width:550px;margin:20px auto;padding:15px;">
+        <form method="POST">
+            <label style="display:block;margin-top:8px;">Vcc (V):</label>
+            <input type="text" name="vcc" value="20" style="width:100%;max-width:200px;padding:5px;margin-bottom:10px;">
+
+            <label style="display:block;margin-top:8px;">R1 (Ω):</label>
+            <input type="text" name="R1" value="100000" style="width:100%;max-width:200px;padding:5px;margin-bottom:10px;">
+
+            <label style="display:block;margin-top:8px;">R2 (Ω):</label>
+            <input type="text" name="R2" value="10000" style="width:100%;max-width:200px;padding:5px;margin-bottom:10px;">
+
+            <label style="display:block;margin-top:8px;">RC (Ω):</label>
+            <input type="text" name="RC" value="3000" style="width:100%;max-width:200px;padding:5px;margin-bottom:10px;">
+
+            <label style="display:block;margin-top:8px;">RE (Ω):</label>
+            <input type="text" name="RE" value="1000" style="width:100%;max-width:200px;padding:5px;margin-bottom:10px;">
+
+            <label style="display:block;margin-top:8px;">Beta (B):</label>
+            <input type="text" name="B" value="100" style="width:100%;max-width:200px;padding:5px;margin-bottom:10px;">
+
+            <label style="display:block;margin-top:8px;">VBE (V):</label>
+            <input type="text" name="VBE" value="0.7" style="width:100%;max-width:200px;padding:5px;margin-bottom:10px;">
+
+            <label style="display:block;margin-top:8px;">VCEsat (V):</label>
+            <input type="text" name="VCEsat" value="0" style="width:100%;max-width:200px;padding:5px;margin-bottom:12px;">
+
+            <button type="submit" style="padding:6px 14px;">Calculate</button>
+        </form>
+    </div>
+
+    <!-- Parameter Guide -->
+    <div class="parameter-guide" style="max-width:650px;margin:20px auto;padding:10px;font-size:0.95em;">
+        <h2 style="margin-bottom:8px;font-size:1.2em;">📌 Parameter Guide</h2>
+        <dl style="line-height:1.5;">
+            <dt>Vcc (V)</dt>
+            <dd>Supply voltage. Example: 20 V.</dd>
+
+            <dt>R1, R2 (Ω)</dt>
+            <dd>Voltage divider resistances. Example: 100 kΩ, 10 kΩ.</dd>
+
+            <dt>RC, RE (Ω)</dt>
+            <dd>Collector and emitter resistances. Example: 3 kΩ, 1 kΩ.</dd>
+
+            <dt>Beta (B)</dt>
+            <dd>Transistor current gain. Example: 100.</dd>
+
+            <dt>VBE (V)</dt>
+            <dd>Base-Emitter voltage. Example: 0.7 V.</dd>
+
+            <dt>VCEsat (V)</dt>
+            <dd>Collector-Emitter saturation voltage. Example: 0 V.</dd>
+        </dl>
+    </div>
+
+    <!-- Search Assistant -->
+    <div class="assistant-container" style="max-width:650px;margin:20px auto;padding:10px;">
+        <h3 style="margin-bottom:8px;">🔍 Search Assistant</h3>
+        <p style="color:#555;line-height:1.5;margin-bottom:8px;">
+            Learn about <strong>BJT voltage divider bias, transistor operating point, IB, IC, VCE</strong>. Default query auto-loads.
+        </p>
+        <textarea id="search-box" rows="3" style="width:100%;padding:5px;margin-bottom:8px;">BJT Voltage Divider Bias IB IC VCE Transistor Mode Calculation</textarea><br>
+        <button onclick="doSearch()" style="padding:6px 14px;margin-bottom:8px;">Search</button>
+        <iframe id="search-frame" style="width:100%;height:300px;border:1px solid #ddd;"></iframe>
+    </div>
+
+    <!-- Results -->
+    {% if result %}
+    <div class="result-container" style="max-width:750px;margin:20px auto;padding:15px;">
+        <h2>Results</h2>
+        <p>Transistor Mode: <strong>{{ result.Mode }}</strong></p>
+        <p>Base Current IB: {{ result.IB }} A</p>
+        <p>Collector Current IC: {{ result.IC }} A</p>
+        <p>Collector-Emitter Voltage VCE: {{ result.VCE }} V</p>
+        <p>Power Dissipation Pc: {{ result.Pc }} W</p>
+    </div>
+    {% endif %}
+
+    <script>
+        function doSearch() {
+            const query = document.getElementById("search-box").value;
+            document.getElementById("search-frame").src =
+                "https://duckduckgo.com/?q=" + encodeURIComponent(query);
+        }
+        window.onload = function() { doSearch(); };
+    </script>
+</body>
+
+
+</html>

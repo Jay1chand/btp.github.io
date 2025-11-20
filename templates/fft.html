@@ -1,0 +1,252 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Animated FFT Butterfly (DIT) — Interactive</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root{--accent:#0ea5a4;--node-bg:#fff;}
+    body{font-family:Inter, Roboto, Arial, sans-serif; background:#f3f6f9; margin:0;padding:18px;}
+    header{background:#0b1220;color:#fff;padding:14px;border-radius:8px;margin-bottom:14px;}
+    .wrap{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:320px 1fr;gap:14px;}
+    .panel{background:#fff;padding:14px;border-radius:8px;box-shadow:0 6px 18px rgba(15,23,42,0.06);}
+    label{font-size:13px;color:#333}
+    input[type="text"]{width:100%;padding:8px;margin-top:6px;border-radius:6px;border:1px solid #ddd}
+    select{width:100%;padding:8px;border-radius:6px;border:1px solid #ddd}
+    button{background:var(--accent);color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;margin-top:10px}
+    .controls{display:flex;gap:8px;align-items:center;margin-top:12px}
+    .stage-indicator{font-weight:700;color:#333;}
+    .svg-box{overflow:auto;padding:6px;background:#fff;border-radius:8px;border:1px solid #eef2f6}
+    .play-btn{background:#111827;color:#fff;border-radius:6px;padding:6px 10px;border:none;cursor:pointer}
+    .error{color:#b91c1c;margin-top:8px}
+    @media (max-width:900px){.wrap{grid-template-columns:1fr;}}
+  </style>
+</head>
+<body>
+  <header>
+    <h1 style="margin:0;font-size:20px">Animated FFT Butterfly Diagram — DIT</h1>
+    <div style="opacity:0.9;margin-top:6px">Enter samples & animate FFT stages. Values shown per node; cross-lines highlight butterflies.</div>
+  </header>
+
+  <div class="wrap">
+    <div class="panel">
+      <form method="POST" id="fft-form">
+        <label>Enter samples (comma-separated). Complex like <code>1+2j</code> allowed.</label>
+        <input type="text" name="input_values" placeholder="e.g. 1,2,3,4" aria-label="input_values">
+
+        <label style="margin-top:10px">FFT Points</label>
+        <select name="fft_points" aria-label="fft_points">
+          <option value="2" {{ 'selected' if chosen_N==2 else ''}}>2</option>
+          <option value="4" {{ 'selected' if chosen_N==4 else ''}}>4</option>
+          <option value="8" {{ 'selected' if chosen_N==8 else ''}}>8</option>
+          <option value="16" {{ 'selected' if chosen_N==16 else ''}}>16</option>
+        </select>
+
+        <button type="submit">Compute & Render</button>
+      </form>
+
+      <div class="controls" style="margin-top:14px">
+        <button id="play" class="play-btn">▶ Play</button>
+        <button id="pause" class="play-btn" style="display:none">⏸ Pause</button>
+        <div style="margin-left:8px">
+          <span class="stage-indicator">Stage:</span>
+          <span id="stage-num">0</span>
+        </div>
+        <div style="margin-left:auto;color:#666">TIP: Use small N for clarity (8 recommended)</div>
+      </div>
+
+      {% if error %}
+        <div class="error">{{ error }}</div>
+      {% endif %}
+    </div>
+
+    <div class="panel svg-panel">
+      <div class="svg-box" id="svg-container">
+        <!-- injected SVG (server-rendered) -->
+        {{ svg_tree|safe }}
+      </div>
+    </div>
+    {% if final_output %}
+<hr>
+<h3>Final FFT Output</h3>
+<table border="1" cellpadding="6" style="border-collapse: collapse; font-size: 14px;">
+    <tr style="background:#222; color:#fff;">
+        <th>Index</th>
+        <th>FFT Value</th>
+    </tr>
+    {% for idx, val in final_output %}
+    <tr>
+        <td>{{ idx }}</td>
+        <td><b>{{ val }}</b></td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+    
+  </div>
+
+<script>
+/*
+JS controls:
+- The server rendered SVG includes elements:
+  - node groups with id n{stage}_{idx}
+  - butterfly lines have class "butterfly-line stage-{s}" and data-stage attribute
+- The script toggles visibility/highlight by stage.
+*/
+(function(){
+  const svgContainer = document.getElementById('svg-container');
+  if (!svgContainer) return;
+
+  const svg = svgContainer.querySelector('svg');
+  if (!svg) return;
+
+  // Gather number of stages from stage labels
+  const stageLabels = svg.querySelectorAll('text');
+  // Determine max stage by counting distinct stage-* classes in butterfly lines
+  const butterflyLines = svg.querySelectorAll('line.butterfly-line');
+  let maxStage = 0;
+  butterflyLines.forEach(l => {
+    const s = parseInt(l.getAttribute('data-stage'));
+    if (!isNaN(s) && s > maxStage) maxStage = s;
+  });
+
+  // Number of stages = maxStage + 1 (including stage 0)
+  const totalStages = maxStage + 1;
+
+  // Helper: show stage index (0..maxStage)
+  function showStage(s){
+    // update label
+    document.getElementById('stage-num').textContent = s;
+
+    // For each node group n{stage}_{idx} show its text, else keep value dim
+    svg.querySelectorAll('g.node').forEach(g => {
+      const st = parseInt(g.getAttribute('data-stage'));
+      const valText = g.querySelector('text.val');
+      if (!valText) return;
+      if (st === s) {
+        valText.style.opacity = '1';
+        g.querySelector('circle').style.stroke = '#0ea5a4';
+      } else {
+        // dim other stages
+        valText.style.opacity = '0.18';
+        g.querySelector('circle').style.stroke = '#1f2937';
+      }
+    });
+
+    // Highlight butterfly lines belonging to stage s
+    svg.querySelectorAll('line.butterfly-line').forEach(l=>{
+      if (parseInt(l.getAttribute('data-stage')) === s){
+        l.style.stroke = '#0ea5a4';
+        l.style.strokeWidth = '2.5';
+        l.style.opacity = '1';
+      } else {
+        l.style.stroke = '#cbd5e1';
+        l.style.strokeWidth = '1.2';
+        l.style.opacity = '0.35';
+      }
+    });
+  }
+
+  // slider not present; use play controls
+  let current = 0;
+  let playing = false;
+  const playBtn = document.getElementById('play');
+  const pauseBtn = document.getElementById('pause');
+
+  function stepForward(){
+    current++;
+    if (current > totalStages-1) current = 0;
+    showStage(current);
+  }
+  function stepBack(){
+    current--;
+    if (current < 0) current = totalStages-1;
+    showStage(current);
+  }
+
+  let timer = null;
+  playBtn.addEventListener('click', ()=>{
+    if (playing) return;
+    playing = true;
+    playBtn.style.display = 'none';
+    pauseBtn.style.display = 'inline-block';
+    timer = setInterval(stepForward, 900);
+  });
+  pauseBtn.addEventListener('click', ()=>{
+    playing = false;
+    playBtn.style.display = 'inline-block';
+    pauseBtn.style.display = 'none';
+    clearInterval(timer);
+  });
+
+  // initial view: show stage 0
+  showStage(0);
+})();
+</script>
+        <!-- 🧠 Wikipedia Assistant -->
+    <div class="assistant-container">
+        <h3>🧠 Wikipedia Assistant</h3>
+        <p style="color:#555;">
+            Explore more about <strong>FAST FOURIER TRANSFORM- </strong>.  
+            This section automatically fetches the top 2 most relevant Wikipedia summaries for your query.
+        </p>
+
+        <textarea id="wiki-query" rows="3" style="width:100%;">Fast Fourier transform</textarea><br>
+        <button onclick="searchWiki()">Search Wikipedia</button>
+
+        <div id="wiki-result">⏳ Loading Wikipedia data...</div>
+        <button id="refresh-btn" onclick="refreshWiki()" 
+            style="margin-top:12px;padding:8px 16px;background:#17a2b8;color:white;
+                   border:none;border-radius:6px;cursor:pointer;font-size:15px;">
+            🔄 Refresh Content
+        </button>
+    </div>
+
+    <script>
+    async function searchWiki() {
+        const query = document.getElementById("wiki-query").value.trim();
+        const resultDiv = document.getElementById("wiki-result");
+        resultDiv.innerHTML = "⏳ Fetching information from Wikipedia...";
+
+        try {
+            const response = await fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=2&prop=extracts&exintro=true&explaintext=true`);
+            const data = await response.json();
+
+            if (data.query && data.query.pages) {
+                const pages = Object.values(data.query.pages);
+                resultDiv.innerHTML = "";
+
+                pages.forEach(page => {
+                    const title = page.title;
+                    const extract = page.extract.split(". ").slice(0, 4).join(". ") + ".";
+                    const url = "https://en.wikipedia.org/?curid=" + page.pageid;
+
+                    resultDiv.innerHTML += `
+                        <h4>${title}</h4>
+                        <p>${extract}</p>
+                        <a href="${url}" target="_blank">🔗 Read full article</a>
+                        <hr>
+                    `;
+                });
+            } else {
+                resultDiv.innerHTML = "❌ No Wikipedia data found for this query.";
+            }
+        } catch (error) {
+            resultDiv.innerHTML = "⚠️ Error fetching Wikipedia content.";
+        }
+    }
+
+    function refreshWiki() {
+        const resultDiv = document.getElementById("wiki-result");
+        resultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+        resultDiv.innerHTML = "🔁 Refreshing Wikipedia content...";
+        setTimeout(searchWiki, 600);
+    }
+
+    window.onload = function() {
+        searchWiki();
+    };
+    </script>
+</body>
+</html>

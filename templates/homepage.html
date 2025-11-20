@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signal Processing Simulations</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ---------- GLOBAL STYLES ---------- */
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #eef1f5;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header {
+      background-color: #2c3e50;
+      color: #fff;
+      padding: 20px 0;
+      display: flex;               /* Use flexbox to align items */
+      align-items: center;         /* Vertically center logo & text */
+      position: relative;
+    }
+
+    .logo-container {
+      margin-left: 20px;            /* Space from the left edge */
+    }
+
+    .site-logo {
+      height: 80px;                 /* Adjust as needed */
+      width: auto;                  /* Maintain aspect ratio */
+    }
+
+    .header-text {
+      margin-left: 320px;            /* Space between logo and text */
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-weight: 700;
+      font-size: 3em;
+    }
+
+    header p {
+      margin: 4px 0 0;
+      font-size: 0.9em;
+      opacity: 0.9;
+    }
+
+
+    main {
+      flex: 1;
+      padding: 30px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ---------- SEARCH BAR ---------- */
+    #search-container {
+      width: 100%;
+      max-width: 550px;
+      margin-bottom: 40px;
+    }
+
+    #search-input {
+      width: 100%;
+      padding: 12px 18px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: 1px solid #bbb;
+      background-color: white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      transition: 0.3s ease;
+    }
+
+    #search-input:focus {
+      outline: none;
+      border-color: #1abc9c;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    /* ---------- SECTIONS ---------- */
+    .cards-section {
+      width: 100%;
+      max-width: 1250px;
+      margin-bottom: 60px;
+    }
+
+    .section-title {
+      font-size: 22px;
+      font-weight: 600;
+      color: #2c3e50;
+      margin-bottom: 20px;
+      padding-left: 12px;
+      border-left: 6px solid #1abc9c;
+    }
+
+    .cards-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 25px;
+    }
+
+    /* ---------- CARDS ---------- */
+    .card {
+      display: block;
+      background-color: #fff;
+      padding: 22px 18px;
+      width: 260px;
+      border-radius: 14px;
+      text-align: center;
+      text-decoration: none;
+      color: #2c3e50;
+      font-weight: 500;
+      transition: 0.3s ease;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+      border-top: 4px solid transparent;
+    }
+
+    .card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      border-top: 4px solid #1abc9c;
+      background-color: #f8fcff;
+    }
+
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .card p {
+      font-size: 14px;
+      font-weight: 300;
+      color: #555;
+    }
+    /* Transition for smooth theme switching */
+    * {
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    /* Toggle button */
+    .theme-toggle {
+      position: absolute;
+      right: 20px;
+      top: 20px;
+      background-color: transparent;
+      border: 2px solid #fff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: #fff;
+      font-size: 18px;
+    }
+
+    /* Light mode (default) */
+    body.light-mode {
+      background-color: #f4f6f8;
+      color: #2c3e50;
+    }
+    body.light-mode header {
+      background-color: #2c3e50;
+      color: #fff;
+    }
+    body.light-mode .card {
+      background: #fff;
+      color: #2c3e50;
+    }
+
+    /* Dark mode */
+    body.dark-mode {
+      background-color: #1a1a1a;
+      color: #e3e3e3;
+    }
+    body.dark-mode header {
+      background-color: #111;
+      color: #e3e3e3;
+    }
+    body.dark-mode .card {
+      background: #222;
+      color: #e3e3e3;
+      box-shadow: 0 2px 10px rgba(255,255,255,0.1);
+    }
+    body.dark-mode .card:hover {
+      background: #333;
+      color: #1abc9c;
+    }
+    /* Brighten section titles in dark mode */
+    body.dark-mode .section-title {
+      color: #f0f0f0;   /* brighter white */
+      border-left-color: #1abc9c; /* keep your green accent */
+    }
+
+    /* Brighten card descriptions */
+    body.dark-mode .card p {
+      color: #dcdcdc;   /* brighter gray */
+    }
+
+    /* Brighten card titles */
+    body.dark-mode .card h3 {
+      color: #ffffff;
+    }
+
+
+    @media (max-width: 600px) {
+      .card {
+        width: 90%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="logo-container">
+    <img src="https://academic.iiti.ac.in/assets/img/slides/refine/logo.png" alt="IITI Logo" class="site-logo">
+  </div>
+  <div class="header-text">
+    <h1>Signal Processing Simulations</h1>
+    <p>Explore, visualize, and understand communication concepts</p>
+  </div>
+    <button id="theme-toggle" class="theme-toggle">🌙</button>
+  </header>
+
+  <main>
+    <!-- Search -->
+    <div id="search-container">
+      <input type="text" id="search-input" placeholder="Search simulations...">
+    </div>
+
+    <!-- GROUP 1: ANALOG & DIGITAL COMMUNICATIONS -->
+    <div class="cards-section">
+      <div class="section-title">Analog & Digital Communication</div>
+      <div class="cards-container" id="cards-container">
+
+        <a href="pulse_code_mod_and_demod" class="card">
+          <h3>Pulse Code Modulation and Demodulation</h3>
+          <p>PCM encoding, quantization, sampling, and full digital reconstruction.</p>
+        </a>
+
+        <a href="amplitude_mod_and_demod" class="card">
+          <h3>Amplitude Modulation and Demodulation</h3>
+          <p>AM/DSB-SC signal generation, envelope detection, and spectrum viewing.</p>
+        </a>
+
+        <a href="frequency_mod_and_demod" class="card">
+          <h3>Frequency Modulation and Demodulation</h3>
+          <p>FM generation, deviation analysis, and demodulation techniques.</p>
+        </a>
+
+        <a href="pulse_delta_mod_and_demod" class="card">
+          <h3>Delta Modulation</h3>
+          <p>Adaptive delta modulation with slope overload and granular noise viewing.</p>
+        </a>
+
+        <a href="pulse_width_mod_and_demod" class="card">
+          <h3>Pulse Width Modulation</h3>
+          <p>PWM generation with duty cycle control and demodulation visualization.</p>
+        </a>
+
+        <a href="complex_QAM" class="card">
+          <h3>Quadrature Amplitude Modulation</h3>
+          <p>Quadrature Amplitude Modulation with constellation and symbol mapping.</p>
+        </a>
+
+        <a href="qpsk" class="card">
+          <h3>Quadrature Phase shift Keying constellation</h3>
+          <p>QPSK modulation, noise channel simulation, and constellation analysis.</p>
+        </a>
+
+        <a href="channel_coding" class="card">
+          <h3>Channel Coding modelling</h3>
+          <p>Error detection, correction, parity, Hamming codes, and decoding visualizations.</p>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- GROUP 2: TRANSFORMS & SPECTRAL ANALYSIS -->
+    <div class="cards-section">
+      <div class="section-title">Transforms & Frequency Domain Analysis</div>
+      <div class="cards-container">
+
+        <a href="DFT" class="card">
+          <h3>Discrete Fourier Transform Calculator</h3>
+          <p>Discrete Fourier Transform with magnitude and phase visualization.</p>
+        </a>
+
+        <a href="DTFT" class="card">
+          <h3>Discrete Time Fourier Transform Calculator</h3>
+          <p>Discrete-Time Fourier Transform analysis for any sequence.</p>
+        </a>
+
+        <a href="IDFT" class="card">
+          <h3>Inverse Discrete Fourier Transform</h3>
+          <p>reconstruction from DFT discrete signals.</p>
+        </a>
+
+        <a href="z_transform" class="card">
+          <h3>Z-Transform</h3>
+          <p>Symbolic Z-transform and Inverse Z-Transform.</p>
+        </a>
+
+        <a href="laplace_transform" class="card">
+          <h3>Laplace Transform</h3>
+          <p>Symbolic Laplace transform and its Inverse with formatted LaTeX output.</p>
+        </a>
+
+        <a href="fourier_transform_graph" class="card">
+          <h3>Fourier Transform Graphs</h3>
+          <p>Magnitude and phase spectra for user-defined signals.</p>
+        </a>
+
+        <a href="laplace_transform_graph" class="card">
+          <h3>Laplace Transform 3D Graph</h3>
+          <p>Poles, zeros, and region of convergence displayed graphically.</p>
+        </a>
+
+        <a href="z_plane1" class="card">
+          <h3>Z-Plane Graphs</h3>
+          <p>Graphical pole-zero representation and ROC of Z-domain functions.</p>
+        </a>
+
+        <a href="fft" class="card">
+          <h3>Fast Fourier Transform Tree Diagram</h3>
+          <p>Fast Fourier Transform visualization for large datasets.</p>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- GROUP 3: SIGNAL PROCESSING & CONTROL -->
+    <div class="cards-section">
+      <div class="section-title">Signal Processing, Circuits & Control</div>
+      <div class="cards-container">
+
+        <a href="DSP" class="card">
+          <h3>Convolution and System Stability Examples</h3>
+          <p>Convolution, System and DSP fundamentals.</p>
+        </a>
+
+        <a href="filters" class="card">
+          <h3>Filter Systems and Plots</h3>
+          <p>Design and simulate analog/digital filters on real signals.</p>
+        </a>
+
+        <a href="control_sys" class="card">
+          <h3>Motor Control Modelling</h3>
+          <p>State-space Motor modelling with PID controller.</p>
+        </a>
+
+        <a href="state_space" class="card">
+          <h3>State-Space Tools</h3>
+          <p>TF-to-state conversion and Time-Domain simulations.</p>
+        </a>
+
+        <a href="transfer" class="card">
+          <h3>Transfer Function Tools</h3>
+          <p>Bode, Nyquist, pole-zero plots, Nichols charts.</p>
+        </a>
+
+        <a href="rootlocus" class="card">
+          <h3>Root Locus & Routh array</h3>
+          <p>Closed-loop Root locus plotting and Routh stability calculations.</p>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- GROUP 4: ADVANCED EM & CIRCUIT TOOLS -->
+    <div class="cards-section">
+      <div class="section-title">Electromagnetics & Circuit Simulators</div>
+      <div class="cards-container">
+
+        <a href="clipper" class="card">
+          <h3>Analog Circuit Simulator</h3>
+          <p>Rectifiers, RC, RL, RLC circuits with waveform visualization.</p>
+        </a>
+
+        <a href="netlist" class="card">
+          <h3>Circuit Netlists</h3>
+          <p>Simulate custom SPICE-style circuit descriptions.</p>
+        </a>
+
+        <a href="fresnel" class="card">
+          <h3>Wave Reflection & Transmission in ray diagrams</h3>
+          <p>Fresnel equations, dielectric interfaces, and ray diagrams.</p>
+        </a>
+
+        <a href="smith" class="card">
+          <h3>Smith Chart</h3>
+          <p>Impedance matching, VSWR, and reflection coefficient plotting.</p>
+        </a>
+
+        <a href="waveguide" class="card">
+          <h3>Waveguides visualization</h3>
+          <p>Rectangular & circular waveguide mode visualization (TE/TM).</p>
+        </a>
+
+        <a href="emft" class="card">
+          <h3>Divergence & Curl</h3>
+          <p>Gradient, divergence, and curl calculator for vector fields.</p>
+        </a>
+
+          <a href="coords" class="card">
+          <h3>Coordinate system conversion</h3>
+          <p>Rectangular, Circular and Cylindrical system conversion.</p>
+        </a>
+      </div>
+    </div>
+
+    <!-- GROUP 5: GENERAL UTILITIES -->
+    <div class="cards-section">
+      <div class="section-title">General Utilities</div>
+      <div class="cards-container">
+
+        <a href="plots" class="card">
+          <h3>Introduction to Basic Signals and Systems</h3>
+          <p>Graph mathematical functions and simple signals interactively.</p>
+        </a>
+
+        <a href="index1" class="card">
+          <h3>Phasor to Signal</h3>
+          <p>RMS, magnitude, phase, and time-domain visualization.</p>
+        </a>
+
+        <a href="image_processing" class="card">
+          <h3>Image Transformation</h3>
+          <p>Basic filtering, transformations, and image operations.</p>
+        </a>
+
+        <a href="8085" class="card">
+          <h3>Basic 8085 Simulator</h3>
+          <p>Basic 8085 microprocessor execution (instruction-level).</p>
+        </a>
+
+        <a href="bounce" class="card">
+          <h3>Voltage Bounce diagram</h3>
+          <p>Analyze ground bounce in high-speed circuits.</p>
+        </a>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Search Filter Script -->
+  <script>
+    const searchInput = document.getElementById('search-input');
+    const cards = document.querySelectorAll('.card');
+
+    searchInput.addEventListener('input', () => {
+      const query = searchInput.value.toLowerCase();
+      cards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        card.style.display = text.includes(query) ? 'block' : 'none';
+      });
+    });
+  </script>
+  <script>
+    const toggleBtn = document.getElementById("theme-toggle");
+
+    // Load saved theme
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) {
+      document.body.classList.add(savedTheme);
+      toggleBtn.textContent = savedTheme === "dark-mode" ? "☀️" : "🌙";
+    } else {
+      document.body.classList.add("light-mode");
+    }
+
+    toggleBtn.addEventListener("click", () => {
+      if (document.body.classList.contains("light-mode")) {
+        document.body.classList.remove("light-mode");
+        document.body.classList.add("dark-mode");
+        toggleBtn.textContent = "☀️";
+        localStorage.setItem("theme", "dark-mode");
+      } else {
+        document.body.classList.remove("dark-mode");
+        document.body.classList.add("light-mode");
+        toggleBtn.textContent = "🌙";
+        localStorage.setItem("theme", "light-mode");
+      }
+    });
+  </script>
+
+</body>
+</html>

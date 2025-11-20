@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Delta Modulation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .card {
+            width: 90%;
+            max-width: 900px;
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+
+        h1, h2, h3 {
+            margin-top: 0;
+            color: #222;
+        }
+
+        form {
+            max-width: 700px;
+        }
+
+        label {
+            display: block;
+            margin-top: 12px;
+            font-weight: bold;
+        }
+
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            margin-top: 6px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 15px;
+        }
+
+        input[type="submit"], button {
+            margin-top: 16px;
+            padding: 10px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover { background: #0056b3; }
+
+        .btn-secondary {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-secondary:hover { background: #117a8b; }
+
+        .error {
+            color: #b00020;
+            margin-top: 12px;
+        }
+
+        .param-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 10px 20px; align-items: start; }
+        .param-grid dt { font-weight: bold; color: #222; }
+        .param-grid dd { margin: 0; color: #444; }
+
+        #wiki-result {
+            border: 1px solid #e3e3e3;
+            padding: 14px;
+            border-radius: 8px;
+            background: #fafafa;
+            margin-top: 12px;
+            min-height: 120px;
+        }
+
+        hr.small {
+            border: 0;
+            border-top: 1px solid #eee;
+            margin: 12px 0;
+        }
+
+        pre.output-box {
+            background: #f6f8fa;
+            border: 1px solid #e9eef6;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <a href="/" class="home">← Back to Homepage</a>
+
+    <div class="card">
+        <h1>Delta Modulation (Simple)</h1>
+        <p>
+            This page simulates a simple Delta Modulator using a single sine-wave message:
+            <code>m(t) = A_m · sin(2π f_m t)</code>. The reconstructor implements ±Δ steps.
+        </p>
+    </div>
+
+        <!-- Parameter Guide -->
+    <div class="card">
+        <h2>📌 Parameter Guide</h2>
+        <dl class="param-grid">
+            <dt>Sampling Frequency (f<sub>s</sub>)</dt>
+            <dd>
+                How many samples per second are used. <strong>Example:</strong> <code>1000</code> (Hz).  
+                <br><strong>Tip:</strong> f<sub>s</sub> should be ≥ 2·f<sub>m</sub>, but for DM better tracking use a higher oversampling ratio.
+            </dd>
+
+            <dt>Message Frequency (f<sub>m</sub>)</dt>
+            <dd>
+                Frequency of the single sine message. <strong>Example:</strong> <code>5</code> (Hz).
+            </dd>
+
+            <dt>Amplitude (A<sub>m</sub>)</dt>
+            <dd>
+                Peak amplitude of the sine. <strong>Example:</strong> <code>1</code>.
+            </dd>
+
+            <dt>Step Size (Δ)</dt>
+            <dd>
+                The increment used by the modulator to move the reconstructor up or down each sample. <strong>Example:</strong> <code>0.1</code>.
+                <br><strong>Trade-off:</strong> small Δ → low granular noise but risk slope-overload; large Δ → less slope-overload but coarse steps.
+            </dd>
+
+            <dt>Duration (T)</dt>
+            <dd>
+                Total simulation time in seconds. <strong>Example:</strong> <code>0.05</code>.
+            </dd>
+        </dl>
+
+    </div>
+
+    <div class="card">
+        <h2>Input Parameters</h2>
+        <form method="POST" id="dm-form" autocomplete="off">
+            <label>Sampling Frequency (Hz):</label>
+            <input type="text" name="fs" value="{{ request.form.fs or '1000' }}" />
+
+            <label>Message Frequency (f<sub>m</sub>) (Hz):</label>
+            <input type="text" name="fm" value="{{ request.form.fm or '5' }}" />
+
+            <label>Amplitude (A<sub>m</sub>):</label>
+            <input type="text" name="Am" value="{{ request.form.Am or '1' }}" />
+
+            <label>Step Size (Δ):</label>
+            <input type="text" name="delta" value="{{ request.form.delta or '0.1' }}" />
+
+            <label>Duration (seconds):</label>
+            <input type="text" name="duration" value="{{ request.form.duration or '0.05' }}" />
+
+            <input type="submit" value="Plot" class="btn-primary">
+        </form>
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+    </div>
+
+    <!-- Results -->
+    <div class="card">
+        <h2>Results</h2>
+        {% if plot_html %}
+            <div>{{ plot_html | safe }}</div>
+        {% else %}
+            <p class="small-note">No plots yet — submit the form above to generate.</p>
+        {% endif %}
+    </div>
+
+    <!-- Wikipedia Assistant -->
+    <div class="card assistant-container">
+        <h3>🧠 Wikipedia Assistant</h3>
+        <p style="color:#555;">Quick summaries about Delta Modulation and related concepts.</p>
+
+        <textarea id="wiki-query" rows="3" style="width:100%;">Delta Modulation</textarea><br>
+        <button type="button" onclick="searchWiki()" class="btn-primary">Search Wikipedia</button>
+        <button type="button" onclick="refreshWiki()" class="btn-secondary">🔄 Refresh</button>
+
+        <div id="wiki-result">⏳ Loading Wikipedia data...</div>
+    </div>
+
+    <script>
+    async function searchWiki() {
+        const query = document.getElementById("wiki-query").value.trim();
+        const resultDiv = document.getElementById("wiki-result");
+        if (!query) { resultDiv.innerHTML = "❌ Enter a search query."; return; }
+        resultDiv.innerHTML = "⏳ Fetching information from Wikipedia...";
+
+        try {
+            const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=2&prop=extracts&exintro=true&explaintext=true`;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (!data.query || !data.query.pages) {
+                resultDiv.innerHTML = "❌ No Wikipedia data found for this query.";
+                return;
+            }
+
+            const pages = Object.values(data.query.pages).sort((a,b) => (a.index||0)-(b.index||0));
+            let html = "";
+
+            for (const page of pages) {
+                const extract = page.extract ? page.extract.split(/(?<=\.)\s+/).slice(0, 4).join(' ') : "(No summary available)";
+                html += `
+                    <div style="margin-bottom:14px;">
+                        <h4 style="margin:6px 0 8px 0;color:#0066cc;">${page.title}</h4>
+                        <p style="line-height:1.6;margin:0 0 8px 0;color:#333;">${extract}</p>
+                        <a href="https://en.wikipedia.org/?curid=${page.pageid}" target="_blank">🔗 Read full article</a>
+                    </div>
+                    <hr class="small">
+                `;
+            }
+
+            html += `<p style="text-align:center;color:#666;margin-top:8px;">— End of summary —</p>`;
+            resultDiv.innerHTML = html;
+
+        } catch (err) {
+            resultDiv.innerHTML = "⚠️ Error fetching Wikipedia content.";
+        }
+    }
+
+    function refreshWiki() {
+        const resultDiv = document.getElementById("wiki-result");
+        resultDiv.innerHTML = "🔁 Refreshing Wikipedia content...";
+        setTimeout(searchWiki, 600);
+    }
+
+    window.onload = function() { searchWiki(); };
+    </script>
+
+</body>
+</html>

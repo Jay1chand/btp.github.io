@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DC Motor PID - Control Systems</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .form-container, .plot-container, .parameter-guide, .assistant-container {
+            width: 90%;
+            max-width: 900px;
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+        h1, h2, h3 { margin-top: 0; color: #222; }
+        .description {
+            background: #eef6ff;
+            padding: 14px;
+            border-left: 5px solid #007bff;
+            border-radius: 6px;
+            line-height: 1.6;
+        }
+        form {
+            display: block;
+            max-width: 850px;
+            margin-top: 12px;
+        }
+        label {
+            display: block;
+            margin-top: 12px;
+            font-weight: bold;
+        }
+        input[type="number"], input[type="text"], select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 6px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 15px;
+            box-sizing: border-box;
+        }
+        .small-note { font-size: 0.9em; color: #555; margin-top:6px; }
+        button, input[type="submit"] {
+            margin-top: 16px;
+            padding: 10px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-primary:hover { background: #0056b3; }
+        .btn-secondary { background: #17a2b8; color: white; }
+        .btn-secondary:hover { background: #117a8b; }
+        .error { color: #b00020; margin-top: 12px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+        .param-grid { display: grid; grid-template-columns: 1fr 3fr; gap: 10px 20px; align-items: start; }
+        .param-grid dt { font-weight: bold; color: #222; }
+        .param-grid dd { margin: 0; color: #444; }
+        #wiki-result { border: 1px solid #e3e3e3; padding: 14px; border-radius: 8px; background: #fafafa; margin-top: 12px; min-height: 120px; }
+        hr.small { border: 0; border-top: 1px solid #eee; margin: 12px 0; }
+        .row { display:flex; gap:12px; }
+        .col { flex:1; min-width:0; }
+        .muted { color:#666; font-size:0.95em; }
+    </style>
+</head>
+<body>
+    <!-- Info / README section -->
+    <div class="info-container" style="max-width:800px;margin:25px auto;padding:15px;">
+        <h1 style="margin-bottom:12px;">DC Motor — PID Controller Demo</h1>
+        <p class="description" style="margin-bottom:10px;">
+            This page simulates a simple DC motor controlled by a PID controller (model &amp; PID pattern from the DigiKey tutorial).
+            The motor model uses back-EMF and armature resistance to compute current, torque and the mechanical acceleration:
+            <code>J·dω/dt = Kt·((V - Ke·ω)/R) - b·ω</code>.
+        </p>
+        <div class="diagram" aria-hidden="false">
+<img src="https://sc-c.digikeyassets.com/-/media/MakerIO/Images/Tutorials/2024/How%20To%20Simulate%20a%20PID%20Controller%20in%20Python%20for%20a%20DC%20Motor/diagram_2.jpg?la=en&ts=273ae995-3af9-4c4e-9800-e3283c494461" alt="PID + DC motor block diagram from DigiKey tutorial">
+<div class="caption">Figure: PID control loop and DC motor model (from DigiKey tutorial).</div>
+</div>
+        <p style="line-height:1.5;margin-bottom:10px;">
+            Tune PID gains and motor parameters, then press <strong>Simulate Motor</strong> to run the Euler-integrated simulation.
+            The results area will show speed vs setpoint, control voltage, and error over time.
+        </p>
+    </div>
+       <!-- Parameter Guide -->
+    <div class="parameter-guide" style="max-width:800px;margin:20px auto;padding:15px;font-size:0.95em;">
+        <h2 style="margin-bottom:8px;font-size:1.05em;">📌 Parameter Guide</h2>
+        <dl style="line-height:1.5;">
+            <dt>Simulation Time (s)</dt>
+            <dd>Total simulation duration. Example: 5 s.</dd>
+
+            <dt>Number of Points</dt>
+            <dd>Number of simulation steps. Larger → smoother but slower. Example: 1000.</dd>
+
+            <dt>Setpoint</dt>
+            <dd>Target motor speed (rad/s). Convert to RPM by ×60/2π if desired.</dd>
+
+            <dt>Kp / Ki / Kd</dt>
+            <dd>Proportional, Integral and Derivative gains of the PID controller. Ki integrates steady-state error; Kd damps overshoot.</dd>
+
+            <dt>J, b, Kt, Ke, R</dt>
+            <dd>Physical motor constants. Typical small motor values are used as defaults; change to match your motor model.</dd>
+
+            <dt>V_min / V_max</dt>
+            <dd>Actuator saturation (supply limits) — important for realistic anti-windup behavior.</dd>
+        </dl>
+    </div>
+
+    <!-- Form -->
+    <div class="form-container" style="max-width:900px;margin:20px auto;padding:15px;">
+        <form method="post">
+            <div class="row">
+                <div class="col">
+                    <label>Simulation Time (s):</label>
+                    <input type="number" name="sim_time" step="0.1" value="{{ defaults['sim_time'] }}">
+                </div>
+                <div class="col">
+                    <label>Number of Points:</label>
+                    <input type="number" name="points" value="{{ defaults['points'] }}">
+                </div>
+            </div>
+
+            <hr class="small">
+
+            <h3 style="margin-bottom:6px;">PID Setpoint & Gains</h3>
+            <div class="row">
+                <div class="col">
+                    <label>Setpoint (speed):</label>
+                    <input type="number" name="setpoint" step="0.1" value="{{ defaults['setpoint'] }}">
+                    <div class="small-note">Units: same as motor ω (rad/s). Convert to RPM client-side if you prefer.</div>
+                </div>
+                <div class="col">
+                    <label>Control Saturation (V min / V max)</label>
+                    <div class="grid-2" style="margin-top:6px;">
+                        <input type="number" name="V_min" step="0.1" value="{{ defaults['V_min'] }}" placeholder="V_min">
+                        <input type="number" name="V_max" step="0.1" value="{{ defaults['V_max'] }}" placeholder="V_max">
+                    </div>
+                </div>
+            </div>
+
+            <div class="row" style="margin-top:10px;">
+                <div class="col">
+                    <label>Kp:</label>
+                    <input type="number" name="Kp" step="0.01" value="{{ defaults['Kp'] }}">
+                </div>
+                <div class="col">
+                    <label>Ki:</label>
+                    <input type="number" name="Ki" step="0.01" value="{{ defaults['Ki'] }}">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <label>Kd:</label>
+                    <input type="number" name="Kd" step="0.001" value="{{ defaults['Kd'] }}">
+                </div>
+                <div class="col">
+                    <label class="muted">(Optional) Noise Filter / Notes</label>
+                    <input type="text" name="note" placeholder="e.g. derivative filter time-constant" value="">
+                </div>
+            </div>
+
+            <hr class="small">
+
+            <h3 style="margin-bottom:6px;">Motor Parameters</h3>
+            <div class="row">
+                <div class="col">
+                    <label>Moment of Inertia J (kg·m²):</label>
+                    <input type="number" name="J" step="0.0001" value="{{ defaults['J'] }}">
+                </div>
+                <div class="col">
+                    <label>Viscous Friction b (N·m·s):</label>
+                    <input type="number" name="b" step="0.0001" value="{{ defaults['b'] }}">
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <label>Torque constant Kt (N·m/A):</label>
+                    <input type="number" name="Kt" step="0.0001" value="{{ defaults['Kt'] }}">
+                </div>
+                <div class="col">
+                    <label>Back-EMF constant Ke (V·s/rad):</label>
+                    <input type="number" name="Ke" step="0.0001" value="{{ defaults['Ke'] }}">
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <label>Armature resistance R (Ω):</label>
+                    <input type="number" name="R" step="0.01" value="{{ defaults['R'] }}">
+                </div>
+                <div class="col">
+                    <label class="muted">Preview</label>
+                    <input type="text" readonly value="Model: J·dω/dt = Kt·((V - Ke·ω)/R) - b·ω">
+                </div>
+            </div>
+
+            <button type="submit" class="btn-primary">Simulate Motor</button>
+        </form>
+
+        {% if error %}
+            <div class="error" style="margin-top:12px;">{{ error }}</div>
+        {% endif %}
+    </div>
+    <!-- Results -->
+    <div class="result-container plot-container" style="max-width:900px;margin:20px auto;padding:15px;">
+        {{ plot_html|safe }}
+    </div>
+
+    <div class="assistant-container" style="max-width:900px;margin:20px auto;padding:15px;">
+        <h3>🧠 Wikipedia Assistant</h3>
+        <p style="color:#555;">
+            Learn about <strong>DC motors</strong> and <strong>PID controllers</strong>. Quick summaries from Wikipedia are provided below; click to open full articles.
+        </p>
+
+        <textarea id="wiki-query" rows="2" style="width:100%;">DC motor</textarea><br>
+        <button type="button" onclick="searchWiki()" class="btn-primary">Search Wikipedia</button>
+        <button type="button" onclick="refreshWiki()" class="btn-secondary" style="margin-left:8px;">🔄 Refresh Content</button>
+
+        <div id="wiki-result">⏳ Loading Wikipedia data...</div>
+    </div>
+
+    <script>
+    async function searchWiki() {
+        const query = document.getElementById("wiki-query").value.trim();
+        const resultDiv = document.getElementById("wiki-result");
+        if (!query) { resultDiv.innerHTML = "❌ Enter a search query."; return; }
+        resultDiv.innerHTML = "⏳ Fetching information from Wikipedia...";
+
+        try {
+            const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=2&prop=extracts&exintro=true&explaintext=true`;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (!data.query || !data.query.pages) {
+                resultDiv.innerHTML = "❌ No Wikipedia data found for this query.";
+                return;
+            }
+
+            const pages = Object.values(data.query.pages).sort((a,b) => (a.index||0)-(b.index||0));
+            let html = "";
+            for (const page of pages) {
+                const title = page.title;
+                const extract = page.extract ? page.extract.split(/(?<=\.)\s+/).slice(0, 4).join(' ') : "(No summary available)";
+                const urlPage = "https://en.wikipedia.org/?curid=" + page.pageid;
+
+                html += `
+                    <div style="margin-bottom:14px;">
+                        <h4 style="margin:6px 0 8px 0;color:#0066cc;">${title}</h4>
+                        <p style="line-height:1.6;margin:0 0 8px 0;color:#333;">${extract}</p>
+                        <a href="${urlPage}" target="_blank" rel="noopener noreferrer">🔗 Read full article</a>
+                    </div>
+                    <hr class="small">
+                `;
+            }
+
+            html += `<p style="text-align:center;color:#666;margin-top:8px;">— End of summary —</p>`;
+            resultDiv.innerHTML = html;
+        } catch (err) {
+            console.error(err);
+            resultDiv.innerHTML = "⚠️ Error fetching Wikipedia content.";
+        }
+    }
+
+    function refreshWiki() {
+        const resultDiv = document.getElementById("wiki-result");
+        resultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+        resultDiv.innerHTML = "🔁 Refreshing Wikipedia content...";
+        setTimeout(searchWiki, 600);
+    }
+
+    window.onload = function() { searchWiki(); };
+    </script>
+</body>
+</html>

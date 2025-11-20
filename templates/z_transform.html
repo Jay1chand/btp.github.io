@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Z-Transform Calculator</title>
+
+    <!-- Minimal, clean styles — still simple and readable -->
+    <style>
+        :root{
+            --accent: #007bff;
+            --accent-dark: #0056b3;
+            --muted: #6b7280;
+            --bg: #f4f6f8;
+            --card: #ffffff;
+            --radius: 8px;
+        }
+
+        html,body{height:100%;}
+        body {
+            font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+            margin: 0;
+            background-color: var(--bg);
+            color: #111827;
+            -webkit-font-smoothing:antialiased;
+            -moz-osx-font-smoothing:grayscale;
+            padding: 24px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 20px;
+            align-items: start;
+        }
+
+        header h1 { margin: 0 0 6px 0; font-size: 1.6rem; }
+        .lead { margin: 0 0 12px 0; color: var(--muted); font-size: .95rem; }
+
+        /* cards */
+        .card {
+            background: var(--card);
+            padding: 18px;
+            border-radius: var(--radius);
+            box-shadow: 0 6px 18px rgba(15,23,42,0.04);
+        }
+
+        /* form */
+        form fieldset { border: none; padding: 0; margin: 0 0 12px 0; }
+        label { display:block; font-weight:600; margin-bottom:6px; font-size:.95rem; }
+        input[type="text"], textarea, select {
+            width:100%; padding:10px 12px; border:1px solid #e6e9ef; border-radius:6px; font-size:0.95rem;
+            background: #fff;
+        }
+
+        .inline { display:inline-flex; align-items:center; gap:8px; cursor: pointer; font-weight:600; color:#111827; }
+        .inline input { transform: translateY(1px); }
+
+        .controls { display:flex; gap:10px; align-items:center; margin-top:6px; }
+        button {
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: .95rem;
+        }
+        button.primary { background: var(--accent); color: #fff; }
+        button.ghost { background: transparent; color: var(--muted); border: 1px solid #e6e9ef; }
+        button.small { padding: 6px 10px; font-size:.85rem; border-radius:6px; }
+
+        .examples { margin-top:10px; display:flex; flex-wrap:wrap; gap:8px; }
+        .examples button { background:#fff; border:1px solid #e6e9ef; padding:6px 10px; border-radius:6px; cursor:pointer; }
+
+        .error { color: #b00020; background: #fff7f7; padding:10px; border-radius:6px; border:1px solid #f2c2c2; }
+
+        /* results */
+        .result { margin-top: 12px; }
+        .result-card { padding: 12px; border-radius: 8px; background: #fbfdff; border: 1px solid #eef6ff; margin-bottom: 10px; }
+        .result-card h3 { margin: 0 0 8px 0; font-size: 1rem; }
+        .result-card code { display: block; padding:8px; background:#f3f6fa; border-radius:6px; margin-bottom:8px; white-space:pre-wrap; }
+        .latex-row { display:flex; gap:8px; align-items:center; justify-content:space-between; }
+        .latex-inline { flex: 1; margin-left: 8px; display:block; text-align:left; }
+
+        /* wiki side */
+        .assistant-container h2 { margin:0 0 8px 0; font-size:1.05rem; }
+        #wiki-result h3 { margin:8px 0 4px; font-size:1rem; }
+        #wiki-result p { margin:0 0 6px; color:var(--muted); font-size:.92rem; }
+
+        /* responsive */
+        @media (max-width: 920px){
+            .container { grid-template-columns: 1fr; padding-bottom: 24px; }
+        }
+    </style>
+
+    <!-- MathJax for LaTeX rendering -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+
+<body>
+  <main class="container" role="main" aria-labelledby="page-title">
+
+    <!-- LEFT: form + results -->
+    <section>
+      <header style="margin-bottom:12px">
+        <h1 id="page-title">Z-Transform Calculator</h1>
+        <p class="lead">Transform discrete-time sequences <code>x[n]</code> ↔ <code>X(z)</code>. Enter an expression using <code>n</code> (time) or <code>z</code> (z-domain).</p>
+      </header>
+      <!-- Parameter Guide -->
+<details style="margin-top:18px; background:#eef7ff; padding:12px 14px; 
+                border-left:5px solid #007bff; border-radius:6px;">
+    <summary style="font-weight:700; cursor:pointer; font-size:1rem;">
+        📘 Parameter Guide (Click to expand)
+    </summary>
+
+    <div style="margin-top:12px; line-height:1.55; font-size:0.95rem; color:#333;">
+
+        <h3 style="margin:8px 0;">1. Input Fields</h3>
+
+        <p><b>Expression (signal_expr):</b>  
+        Enter a discrete-time sequence <code>x[n]</code> or a Z-domain function <code>X(z)</code>.</p>
+
+        <p><b>Accepted syntax (Lcapy-style):</b></p>
+        <ul>
+            <li><code>u(n)</code> – unit step</li>
+            <li><code>delta(n-k)</code> – Kronecker delta</li>
+            <li><code>a**n</code> – power/exponential</li>
+            <li><code>z**-1</code> – delay element</li>
+            <li><code>cos(…)</code>, <code>sin(…)</code>, arithmetic</li>
+        </ul>
+
+        <h3 style="margin:8px 0;">2. Operation</h3>
+        <ul>
+            <li><b>Z-Transform</b> → Computes <code>X(z)</code> from <code>x[n]</code>.</li>
+            <li><b>Inverse Z-Transform</b> → Computes <code>x[n]</code> from <code>X(z)</code>.</li>
+        </ul>
+
+        <h3 style="margin:8px 0;">3. Causal Option</h3>
+        <p><b>assume causal</b> checkbox:  
+        Forces <code>x[n] = 0</code> for <code>n &lt; 0</code> when computing the inverse Z-transform.</p>
+
+        <h3 style="margin:8px 0;">4. Useful Patterns</h3>
+        <ul>
+            <li><code>0.5**n * u(n)</code> → geometric causal sequence</li>
+            <li><code>z/(z-a)</code>  → inverse gives <code>a**n * u(n)</code></li>
+            <li><code>1/(1 - r*z**-1)</code> → inverse gives <code>r**n * u(n)</code></li>
+            <li><code>delta(n) + 2*delta(n-2)</code> → simple FIR sequence</li>
+        </ul>
+
+        <h3 style="margin:8px 0;">5. Tips</h3>
+        <ul>
+            <li>Multiplication uses <code>*</code> always (must write <code>2*u(n)</code>, not <code>2u(n)</code>).</li>
+            <li>Powers use <code>**</code> (e.g., <code>z**-1</code>, <code>a**n</code>).</li>
+            <li>For sequences, include <code>u(n)</code> to indicate causality when needed.</li>
+        </ul>
+
+    </div>
+</details>
+
+      <div class="card">
+        <form method="POST" id="zt-form" novalidate aria-describedby="form-instructions">
+          <p id="form-instructions" style="margin:0 0 12px; color:var(--muted); font-size:.93rem;">
+            Use Lcapy-style syntax: e.g. <code>0.5**n * u(n)</code>, <code>delta(n)</code>, <code>z/(z-0.5)</code>.
+          </p>
+
+          <fieldset>
+            <label for="signal_expr">Expression</label>
+            <input id="signal_expr" name="signal_expr" type="text" placeholder="e.g. 0.5**n * u(n)  OR  z/(z-0.5)" required value="{{ request.form.get('signal_expr','') }}">
+          </fieldset>
+
+          <fieldset style="margin-top:10px;">
+            <legend style="font-weight:700; margin-bottom:8px;">Operation</legend>
+            <label class="inline">
+              <input type="radio" name="operation" value="zt" {% if request.form.get('operation','zt') == 'zt' %}checked{% endif %}>
+              Z-Transform
+            </label>
+
+            <label class="inline" style="margin-left:12px;">
+              <input type="radio" name="operation" value="izt" {% if request.form.get('operation') == 'izt' %}checked{% endif %}>
+              Inverse Z-Transform
+            </label>
+
+            <label class="inline" style="margin-left:12px;">
+              <input type="checkbox" name="causal" {% if request.form.get('causal') %}checked{% endif %}>
+              assume causal (for IZT)
+            </label>
+          </fieldset>
+
+          <div class="controls" style="margin-top:12px;">
+            <button class="primary" type="submit">Compute</button>
+            <button class="ghost" type="button" id="clear-btn">Clear</button>
+            <div style="margin-left:auto; color:var(--muted); font-size:.9rem; align-self:center;">Tip: use examples below</div>
+          </div>
+
+          <div class="examples" aria-hidden="false" style="margin-top:12px;">
+            <button type="button" class="exbtn" data-ex="0.5**n * u(n)" data-op="zt">0.5**n · u(n)</button>
+            <button type="button" class="exbtn" data-ex="delta(n)+2*delta(n-2)" data-op="zt">delta(n)+2·delta(n-2)</button>
+            <button type="button" class="exbtn" data-ex="z/(z-0.5)" data-op="izt">z/(z-0.5)</button>
+            <button type="button" class="exbtn" data-ex="1/(1-0.3*z**-1)" data-op="izt">1/(1-0.3 z⁻¹)</button>
+          </div>
+        </form>
+
+        <!-- errors -->
+        {% if error %}
+        <details open class="error" style="margin-top:12px;">
+            <summary><strong>Error</strong></summary>
+            <pre style="white-space:pre-wrap; margin:8px 0 0 0;">{{ error }}</pre>
+        </details>
+        {% endif %}
+
+        <!-- results -->
+        {% if results %}
+        <div id="results" class="result" style="margin-top:14px;">
+            <h2 style="margin:0 0 10px 0; font-size:1.05rem;">Results</h2>
+
+            {% for r in results %}
+            <div class="result-card" aria-labelledby="res-{{ loop.index }}">
+                <h3 id="res-{{ loop.index }}">{{ r.description }}</h3>
+
+                <div>
+                  <div style="font-weight:700; color:var(--muted); font-size:.88rem; margin-bottom:6px;">Expression</div>
+                  <code>{{ r.expr }}</code>
+                </div>
+
+                <div style="margin-top:8px;">
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <button class="small ghost copy-latex" type="button" data-latex="{{ r.latex }}">Copy LaTeX</button>
+                  </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </section>
+
+    <!-- RIGHT: Wikipedia assistant -->
+    <aside class="card assistant-container" aria-labelledby="wiki-title">
+      <h2 id="wiki-title">🧠 Wikipedia Assistant</h2>
+      <p style="margin:6px 0 10px 0; color:var(--muted); font-size:.92rem;">Quick summaries for <strong>Z transform</strong>.</p>
+
+      <label for="wiki-query" style="display:block; font-weight:600; margin-bottom:6px;">Search Wikipedia</label>
+      <textarea id="wiki-query" rows="3" style="width:100%; padding:10px 12px; border-radius:6px; border:1px solid #e6e9ef;">Z transform</textarea>
+
+      <div class="controls" style="margin-top:10px;">
+        <button id="wiki-search" class="primary" type="button">Search Wikipedia</button>
+        <button id="refresh-btn" class="ghost" type="button">🔄 Refresh</button>
+      </div>
+
+      <div id="wiki-result" style="margin-top:12px; color:var(--muted); font-size:.92rem;">⏳ Loading Wikipedia data...</div>
+    </aside>
+
+  </main>
+
+  <!-- JS (usability: examples, clear, copy, wiki, MathJax typeset) -->
+  <script>
+  // Fill examples
+  document.querySelectorAll(".exbtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const ex = btn.dataset.ex;
+      const op = btn.dataset.op;
+      const input = document.getElementById("signal_expr");
+      input.value = ex;
+      const radio = document.querySelector(`input[name="operation"][value="${op}"]`);
+      if (radio) radio.checked = true;
+      input.focus();
+    });
+  });
+
+  // Clear form
+  document.getElementById("clear-btn").addEventListener("click", () => {
+    const input = document.getElementById("signal_expr");
+    input.value = "";
+    document.querySelector("input[name='operation'][value='zt']").checked = true;
+    const causal = document.querySelector("input[name='causal']");
+    if (causal) causal.checked = false;
+    input.focus();
+  });
+
+  // Copy LaTeX
+  document.querySelectorAll(".copy-latex").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const latex = btn.dataset.latex || "";
+      try {
+        await navigator.clipboard.writeText(latex);
+        const prev = btn.textContent;
+        btn.textContent = "Copied ✓";
+        setTimeout(() => btn.textContent = prev, 1200);
+      } catch (err) {
+        btn.textContent = "Copy failed";
+        setTimeout(() => btn.textContent = "Copy LaTeX", 1200);
+      }
+    });
+  });
+
+  // Wikipedia assistant
+  async function searchWiki() {
+    const query = document.getElementById("wiki-query").value.trim() || "Z transform";
+    const resultDiv = document.getElementById("wiki-result");
+    resultDiv.innerHTML = "⏳ Fetching information from Wikipedia...";
+
+    try {
+      const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=2&prop=extracts&exintro=true&explaintext=true`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.query && data.query.pages) {
+        const pages = Object.values(data.query.pages);
+        resultDiv.innerHTML = "";
+        pages.forEach(page => {
+          const extract = (page.extract || "").split(". ").slice(0, 4).join(". ").trim();
+          const text = extract ? (extract + ".") : "No summary available.";
+          const link = "https://en.wikipedia.org/?curid=" + page.pageid;
+          const node = document.createElement("div");
+          node.innerHTML = `<h3 style="margin:0 0 6px 0;">${page.title}</h3><p style="margin:0 0 6px 0;">${text}</p><a href="${link}" target="_blank" rel="noopener">🔗 Read full article</a><hr style="margin:8px 0 12px 0; border:none; border-top:1px solid #eef6ff;" />`;
+          resultDiv.appendChild(node);
+        });
+      } else {
+        resultDiv.innerHTML = "❌ No Wikipedia data found.";
+      }
+    } catch (err) {
+      resultDiv.innerHTML = "⚠️ Error fetching Wikipedia content.";
+    }
+  }
+
+  document.getElementById("wiki-search").addEventListener("click", searchWiki);
+  document.getElementById("refresh-btn").addEventListener("click", () => {
+    const resultDiv = document.getElementById("wiki-result");
+    resultDiv.scrollIntoView({ behavior: "smooth" });
+    resultDiv.innerHTML = "🔁 Refreshing...";
+    setTimeout(searchWiki, 300);
+  });
+
+  // typeset MathJax after page load and after results are present
+  function typesetMath() {
+    if (window.MathJax && MathJax.typesetPromise) {
+      MathJax.typesetPromise().catch(() => {/* ignore */});
+    }
+  }
+
+  window.addEventListener("load", () => {
+    typesetMath();
+    searchWiki();
+  });
+
+  // If the server returned results, re-typeset after a short delay so LaTeX shows correctly
+  // (useful when Jinja injects results on initial render)
+  setTimeout(typesetMath, 400);
+  </script>
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DFT</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .form-container, .plot-container, .parameter-guide, .assistant-container {
+            width: 90%;
+            max-width: 900px;
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+        h1, h2, h3 { margin-top: 0; color: #222; }
+        .description {
+            background: #eef6ff;
+            padding: 14px;
+            border-left: 5px solid #007bff;
+            border-radius: 6px;
+            line-height: 1.6;
+        }
+        form {
+            display: block;
+            max-width: 700px;
+            margin-top: 12px;
+        }
+        label {
+            display: block;
+            margin-top: 12px;
+            font-weight: bold;
+        }
+        input[type="number"], input[type="text"], select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 6px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 15px;
+        }
+        .small-note { font-size: 0.9em; color: #555; margin-top:6px; }
+        button, input[type="submit"] {
+            margin-top: 16px;
+            padding: 10px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-primary:hover { background: #0056b3; }
+        .btn-secondary { background: #17a2b8; color: white; }
+        .btn-secondary:hover { background: #117a8b; }
+        .error { color: #b00020; margin-top: 12px; }
+        .param-grid { display: grid; grid-template-columns: 1fr 3fr; gap: 10px 20px; align-items: start; }
+        .param-grid dt { font-weight: bold; color: #222; }
+        .param-grid dd { margin: 0; color: #444; }
+        #wiki-result { border: 1px solid #e3e3e3; padding: 14px; border-radius: 8px; background: #fafafa; margin-top: 12px; min-height: 120px; }
+        hr.small { border: 0; border-top: 1px solid #eee; margin: 12px 0; }
+
+        /* Result & plot styling */
+        .results { max-width: 900px; width: 90%; margin: 20px auto; display: grid; grid-template-columns: 1fr; gap: 16px; }
+        .result-block { background: #ffffff; padding: 14px; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,0.04); }
+        pre { background:#f7f7f7; padding:10px; border-radius:6px; overflow:auto; white-space:pre-wrap; word-break:break-word; }
+        .plot-wrapper { display:flex; flex-direction:column; gap:10px; align-items:center; }
+        .plot-img { max-width:100%; height:auto; border-radius:8px; border:1px solid #eee; }
+        .meta-row { display:flex; gap:12px; flex-wrap:wrap; color:#555; font-size:0.95em; }
+    </style>
+</head>
+<body>
+    <!-- Info / README section -->
+    <div class="info-container" style="max-width:650px;margin:25px auto;padding:15px;">
+        <h1 style="margin-bottom:12px;">DFT & IDFT Calculator</h1>
+        <p style="line-height:1.5;margin-bottom:10px;">
+            Compute the <strong>Discrete Fourier Transform (DFT)</strong> of a given sequence and its 
+            <strong>Inverse Discrete Fourier Transform (IDFT)</strong>. Enter your input sequence to 
+            view the frequency-domain representation <em>X[k]</em> and reconstruct the original sequence.
+        </p>
+    </div>
+
+    <div class="parameter-guide" style="max-width:650px;margin:20px auto;padding:10px;font-size:0.95em;">
+        <h2 style="margin-bottom:8px;font-size:1.2em;">📌 Input Guide</h2>
+        <dl style="line-height:1.5;">
+            <dt>Sequence x[n]</dt>
+            <dd>Enter numbers separated by spaces. Example: <code>1 2 3 4</code>. Commas are allowed too.</dd>
+        </dl>
+    </div>
+
+    <!-- Input form -->
+    <div class="form-container" style="max-width:550px;margin:20px auto;padding:15px;">
+        <form method="POST" action="/DFT">
+            <label for="sequence" style="display:block;margin-bottom:6px;">Enter sequence x[n] (space separated):</label>
+            <input type="text" id="sequence" name="sequence" placeholder="Example: 1 2 3 4" required 
+                   style="width:100%;max-width:400px;padding:5px;margin-bottom:12px;">
+            <input type="submit" class="btn-primary" value="Compute DFT/IDFT" style="padding:8px 14px;">
+        </form>
+    </div>
+
+    <!-- Results (shown if result is returned by Flask) -->
+    {% if result %}
+    <div class="results" style="max-width:900px;">
+        {% if result.error %}
+            <div class="result-block">
+                <p class="error">❌ Error: {{ result.error }}</p>
+            </div>
+        {% else %}
+            <!-- Summary / metadata -->
+            <div class="result-block">
+                <div class="meta-row">
+                    <div><strong>Input length:</strong> {{ result.sequence|length }}</div>
+                    <div><strong>Sequence:</strong> <code>{{ result.sequence }}</code></div>
+                </div>
+            </div>
+
+            <!-- Plot area (if Flask provided result.plot as base64 PNG) -->
+            {% if result.plot %}
+            <div class="result-block plot-wrapper" aria-live="polite">
+                <h3 style="margin:0 0 6px 0;">Plot — DFT Magnitude & Phase</h3>
+                <img class="plot-img" src="data:image/png;base64,{{ result.plot }}" alt="DFT magnitude and phase plot">
+                <div class="small-note">Plot generated on the server (magnitude on top, phase below).</div>
+            </div>
+            {% endif %}
+
+            <!-- Textual DFT -->
+            <div class="result-block">
+                <h3 style="margin:0 0 8px 0;">DFT &ndash; X[k]</h3>
+                <pre>{% for line in result.dft %}{{ line }} {% endfor %}</pre>
+            </div>
+
+            <!-- Textual IDFT -->
+            <div class="result-block">
+                <h3 style="margin:0 0 8px 0;">IDFT &ndash; Reconstructed x[n]</h3>
+                <pre>{% for line in result.idft %}{{ line }} {% endfor %}</pre>
+            </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- 🔍 Wikipedia Assistant -->
+    <div class="assistant-container" style="max-width:650px;margin:30px auto;padding:10px;">
+        <h3 style="margin-bottom:10px;">📘 Wikipedia Assistant</h3>
+        <p style="color:#555;line-height:1.6;margin-bottom:15px;">
+            Instantly explore detailed explanations from <b>Wikipedia</b> about 
+            <b>DFT, IDFT, and frequency-domain analysis</b>.  
+            The most relevant results are auto-loaded below for convenience.
+        </p>
+
+        <!-- Search Input -->
+        <textarea id="wiki-query" rows="3" 
+            style="width:100%;padding:10px 12px;margin-bottom:12px;border-radius:6px;
+                   border:1px solid #ccc;font-size:15px;resize:none;">
+DFT, IDFT, frequency-domain analysis, and sequence reconstruction
+        </textarea><br>
+
+        <button onclick="searchWiki()" 
+            style="padding:10px 20px;font-size:15px;border:none;border-radius:6px;
+                   background-color:#007BFF;color:white;cursor:pointer;">
+            🔍 Search Wikipedia
+        </button>
+
+        <!-- Result Box -->
+        <div id="wiki-result" 
+            style="margin-top:20px;padding:15px 18px;background:#fafafa;
+                   border-radius:8px;border:1px solid #ddd;line-height:1.7;
+                   font-size:15px;color:#333;min-height:120px;">
+            ⏳ Loading default Wikipedia content...
+        </div>
+
+        <!-- Refresh Button -->
+        <button id="refresh-btn" onclick="refreshWiki()" 
+            style="margin-top:12px;padding:8px 16px;background:#17a2b8;color:white;
+                   border:none;border-radius:6px;cursor:pointer;font-size:15px;">
+            🔄 Refresh Content
+        </button>
+    </div>
+
+    <!-- 📘 Wikipedia API Script (unchanged) -->
+    <script>
+    async function searchWiki() {
+        const query = document.getElementById("wiki-query").value.trim();
+        const resultDiv = document.getElementById("wiki-result");
+        resultDiv.innerHTML = "⏳ Searching Wikipedia...";
+
+        const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`;
+
+        try {
+            const searchRes = await fetch(searchUrl);
+            const data = await searchRes.json();
+
+            if (!data.query || data.query.search.length === 0) {
+                resultDiv.innerHTML = "❌ No results found on Wikipedia.";
+                return;
+            }
+
+            // Take top 2 most relevant pages
+            const topResults = data.query.search.slice(0, 2);
+            let html = `<h4 style="margin-top:0;font-size:18px;color:#007BFF;">Wikipedia Overview: ${query}</h4>`;
+
+            for (const r of topResults) {
+                const title = r.title;
+                const pageUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(title)}`;
+                const extractUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&explaintext&titles=${encodeURIComponent(title)}&format=json&origin=*`;
+
+                try {
+                    const extractRes = await fetch(extractUrl);
+                    const extractData = await extractRes.json();
+                    const pages = extractData.query.pages;
+                    const extractText = Object.values(pages)[0].extract || "(No summary available)";
+                    const shortText = extractText.split(/\.\s+/).slice(0, 5).join('. ') + '.';
+
+                    html += `
+                        <div style="margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid #eee;">
+                            <p style="margin:0;">
+                                <b style="color:#0066cc;font-size:17px;">${title}</b><br>
+                                <span style="line-height:1.6;color:#333;">${shortText}</span>
+                            </p>
+                            <a href="${pageUrl}" target="_blank"
+                               style="display:inline-block;margin-top:8px;color:#007BFF;text-decoration:none;font-weight:bold;">
+                               📖 Read full article →
+                            </a>
+                        </div>
+                    `;
+                } catch {
+                    html += `<p style="color:red;">⚠️ Failed to load extract for ${title}</p>`;
+                }
+            }
+
+            html += `<p style="text-align:center;color:#666;margin-top:15px;">— End of summary —</p>`;
+            resultDiv.innerHTML = html;
+        } catch (error) {
+            resultDiv.innerHTML = "❌ Couldn't fetch Wikipedia data.";
+        }
+    }
+
+    function refreshWiki() {
+        const resultDiv = document.getElementById("wiki-result");
+        resultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+        resultDiv.innerHTML = "🔁 Refreshing Wikipedia content...";
+        setTimeout(() => searchWiki(), 600);
+    }
+
+    // Auto-load default query after short delay
+    window.onload = () => {
+        setTimeout(searchWiki, 800);
+    };
+    </script>
+</body>
+</html>

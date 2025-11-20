@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Half-Wave Rectifier</title>
+</head>
+<body>
+  <h1>Half-Wave Rectifier</h1>
+  <form method="POST" id="halfwave-form">
+    <label>V<sub>peak</sub> (V): <input type="text" name="Vp" value="10"></label><br>
+    <label>Diode drop V<sub>k</sub> (V): <input type="text" name="Vk" value="0.7"></label><br>
+    <label>Load resistance R<sub>L</sub> (Ω): <input type="text" name="Rl" value="5"></label><br>
+    <label>Frequency (Hz): <input type="text" name="freq" value="50"></label><br>
+    <button type="submit">Simulate</button>
+  </form>
+
+  <div class="card">
+    <h2>Results:</h2>
+    <div id="results-block">
+      {% if result %}{{ result|safe }}{% else %}<em>No result yet</em>{% endif %}
+    </div>
+  </div>
+
+  {{ plot_html|safe }}
+  <script src="{{ url_for('static', filename='copy.js') }}"></script>
+</body>
+</html>

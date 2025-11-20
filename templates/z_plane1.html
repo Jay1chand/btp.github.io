@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Z-Transform Pole-Zero Plot</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 18px; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .form-row { margin-bottom: 10px; }
+    input[type="text"], select { width: 100%; padding: 8px; box-sizing: border-box; }
+    label { font-weight: bold; display:block; margin-bottom:4px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+    .panel { padding: 12px; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; }
+    .btn { padding: 8px 14px; border: none; border-radius: 6px; background: #007bff; color: white; cursor: pointer; }
+    .small { font-size: 0.9em; color: #555; }
+    pre { background: #f6f6f6; padding: 8px; border-radius: 4px; overflow-x:auto; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Z-Transform Pole–Zero Plot</h2>
+
+   <div class="panel" style="margin-top:18px;">
+  <h4>Parameter Guide</h4>
+
+  <ul style="line-height:1.6; margin:0; padding-left:18px;">
+    <li>
+      <strong>Numerator (b):</strong>
+      Coefficients of the numerator polynomial written as:
+      b[0] + b[1] z⁻¹ + b[2] z⁻² + ...
+      <br>Example: <code>1 -0.5 0.2</code>
+    </li>
+
+    <li style="margin-top:8px;">
+      <strong>Denominator (a):</strong>
+      Coefficients of the denominator polynomial written as:
+      a[0] + a[1] z⁻¹ + a[2] z⁻² + ...
+      <br>Example: <code>1 -1.2 0.35</code>
+    </li>
+
+    <li style="margin-top:8px;">
+      <strong>Coefficient Format:</strong>
+      Enter values separated by space or commas.
+      <br>Examples: <code>1 -0.5 0.3</code>, <code>1, -0.5, 0.3</code>
+    </li>
+
+    <li style="margin-top:8px;">
+      <strong>Signal Type:</strong>
+      <ul style="padding-left:16px; margin:6px 0;">
+        <li><strong>Causal:</strong> ROC is the region outside the outermost pole.</li>
+        <li><strong>Anti-causal:</strong> ROC is the region inside the innermost pole.</li>
+        <li><strong>Two-sided:</strong> ROC is the region between two circles.</li>
+      </ul>
+    </li>
+
+    <li style="margin-top:8px;">
+      <strong>Stability:</strong>
+      The system is stable only when the ROC includes the unit circle (magnitude of z equal to 1).
+    </li>
+
+    <li style="margin-top:8px;">
+      <strong>Zero / Pole Meaning:</strong>
+      <ul style="padding-left:16px; margin:6px 0;">
+        <li><strong>Zeros:</strong> Values of z for which the numerator becomes zero.</li>
+        <li><strong>Poles:</strong> Values of z for which the denominator becomes zero.</li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
+    <form method="post" action="/z_plane1">
+      <div class="grid">
+        <div class="panel">
+          <div class="form-row">
+            <label for="numerator">Numerator coefficients (b) — space or comma separated</label>
+            <input type="text" id="numerator" name="numerator" value="{{ request.form.numerator or default_num }}">
+            <div class="small">Example: <code>1 -0.5</code> or <code>1, 0, -0.5</code></div>
+          </div>
+
+          <div class="form-row">
+            <label for="denominator">Denominator coefficients (a) — space or comma separated</label>
+            <input type="text" id="denominator" name="denominator" value="{{ request.form.denominator or default_den }}">
+            <div class="small">Example: <code>1 -0.5</code> represents 1 - 0.5 z^-1</div>
+          </div>
+
+          <div class="form-row">
+            <label for="signal_type">Signal type</label>
+            <select id="signal_type" name="signal_type">
+              <option value="causal" {% if (request.form.signal_type or default_type) == 'causal' %}selected{% endif %}>Causal</option>
+              <option value="anti-causal" {% if (request.form.signal_type or default_type) == 'anti-causal' %}selected{% endif %}>Anti-causal</option>
+              <option value="two-sided" {% if (request.form.signal_type or default_type) == 'two-sided' %}selected{% endif %}>Two-sided</option>
+            </select>
+          </div>
+
+          <div class="form-row" style="margin-top:8px;">
+            <button class="btn" type="submit">Plot Z-plane</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h4>Results</h4>
+          <div>
+            <strong>ROC:</strong>
+            <div style="margin: 6px 0 12px 0;"><pre>{{ roc }}</pre></div>
+
+            <strong>Stability:</strong>
+            <div style="margin: 6px 0 12px 0;"><pre>{{ stability_msg }}</pre></div>
+
+            <div class="small">If coefficients are empty or invalid, the app will show an error in ROC.</div>
+          </div>
+        </div>
+      </div>
+    </form>
+
+    <div style="margin-top:18px;">
+      {% if plot_html %}
+        <div class="panel">
+          <!-- mpld3 HTML is safe to render; we mark it safe -->
+          {{ plot_html | safe }}
+        </div>
+      {% else %}
+        <div class="panel small">
+          No plot yet — submit numerator & denominator and click "Plot Z-plane".
+        </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- 🧠 Wikipedia Assistant -->
+<div class="assistant-container">
+    <h3>🧠 Wikipedia Assistant</h3>
+    <p style="color:#555;">
+        Explore more about <strong>Z transform graph</strong>.  
+        This section automatically fetches the top 2 most relevant Wikipedia summaries for your query.
+    </p>
+
+    <textarea id="wiki-query" rows="3" style="width:100%;">Z-transform plot</textarea><br>
+    <button onclick="searchWiki()">Search Wikipedia</button>
+
+    <div id="wiki-result">⏳ Loading Wikipedia data...</div>
+    <button id="refresh-btn" onclick="refreshWiki()" 
+        style="margin-top:12px;padding:8px 16px;background:#17a2b8;color:white;
+               border:none;border-radius:6px;cursor:pointer;font-size:15px;">
+        🔄 Refresh Content
+    </button>
+</div>
+
+<script>
+/* -----------------------------
+   🔍 Wikipedia Search
+------------------------------ */
+async function searchWiki() {
+    const query = document.getElementById("wiki-query").value.trim();
+    const resultDiv = document.getElementById("wiki-result");
+    resultDiv.innerHTML = "⏳ Fetching information from Wikipedia...";
+
+    try {
+        const response = await fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=2&prop=extracts&exintro=true&explaintext=true`);
+        const data = await response.json();
+
+        if (data.query && data.query.pages) {
+            const pages = Object.values(data.query.pages);
+            resultDiv.innerHTML = "";
+
+            pages.forEach(page => {
+                const title = page.title;
+                const extract = page.extract.split(". ").slice(0, 4).join(". ") + ".";
+                const url = "https://en.wikipedia.org/?curid=" + page.pageid;
+
+                resultDiv.innerHTML += `
+                    <h4>${title}</h4>
+                    <p>${extract}</p>
+                    <a href="${url}" target="_blank">🔗 Read full article</a>
+                    <hr>
+                `;
+            });
+        } else {
+            resultDiv.innerHTML = "❌ No Wikipedia data found for this query.";
+        }
+    } catch (error) {
+        resultDiv.innerHTML = "⚠️ Error fetching Wikipedia content.";
+    }
+}
+
+function refreshWiki() {
+    const resultDiv = document.getElementById("wiki-result");
+    resultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+    resultDiv.innerHTML = "🔁 Refreshing Wikipedia content...";
+    setTimeout(searchWiki, 600);
+}
+
+window.onload = function() {
+    searchWiki();
+};
+
+</script>
+</body>
+</html>

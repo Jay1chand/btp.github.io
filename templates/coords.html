@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Coordinate System Converter</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f4f4f4;
+        }
+        h1, h2, h3 { color: #333; }
+        form {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.12);
+        }
+        label { font-weight: bold; display:block; margin-top:8px; }
+        input[type=text], select { 
+            width: 100%;
+            padding: 8px;
+            margin-top: 4px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+        .row { display:flex; gap:10px; }
+        .row .col { flex:1; }
+        button {
+            margin-top: 10px;
+            padding: 10px 15px;
+            background: #007BFF;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+        .card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.12);
+            margin-bottom: 15px;
+        }
+        .note {
+            background: #e9f5ff;
+            border-left: 4px solid #007BFF;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        pre {
+            background: #fbfbfb;
+            padding: 10px;
+            border-radius: 6px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .small { font-size: 0.9em; color: #555; }
+        .result-image { max-width: 100%; height: auto; border: 1px solid #e0e0e0; border-radius: 6px; margin-top: 8px; }
+        .inline { display:inline-block; vertical-align:middle; }
+    </style>
+</head>
+<body>
+    <h1>Coordinate System Converter</h1>
+
+    <div class="note">
+        <p>
+            Convert between <strong>Cartesian (rectangular)</strong>, <strong>Polar/Circular</strong>,
+            <strong>Cylindrical</strong> and <strong>Spherical</strong> coordinate systems.
+        </p>
+    </div>
+
+    <div class="card">
+        <h3>Quick Guide</h3>
+        <ul style="margin-top:-5px;">
+            <li><strong>Cartesian (x, y) or (x, y, z)</strong></li>
+            <li><strong>Polar (r, θ)</strong> — θ measured from +x (use degrees or radians)</li>
+            <li><strong>Cylindrical (r, θ, z)</strong> — θ same as polar</li>
+            <li><strong>Spherical (ρ, θ, φ)</strong> — physics convention: θ = azimuth (xy-plane), φ = inclination from +z</li>
+        </ul>
+        <p class="small">Tip: you can enter symbolic values like <code>pi/2</code> or <code>sqrt(2)</code>. The server will try to evaluate them.</p>
+    </div>
+
+    <form method="POST" id="coords-form" novalidate>
+        <label>From system:</label>
+        <select name="system_from" id="system_from">
+            <option value="cartesian">Cartesian / Rectangular</option>
+            <option value="polar">Polar / Circular (2D)</option>
+            <option value="cylindrical">Cylindrical (3D)</option>
+            <option value="spherical">Spherical (3D)</option>
+        </select>
+
+        <label>To system:</label>
+        <select name="system_to" id="system_to">
+            <option value="polar">Polar / Circular (2D)</option>
+            <option value="cartesian">Cartesian / Rectangular</option>
+            <option value="cylindrical">Cylindrical (3D)</option>
+            <option value="spherical">Spherical (3D)</option>
+        </select>
+
+        <label>Coordinates (comma separated):</label>
+        <input type="text" name="coords" id="coords" value="1, 1" placeholder="e.g. 1,2  or  1,45  or  1,0.785398,2">
+        <div class="small">Examples: <code>1,2</code> (2D cartesian), <code>2,45</code> (r,θ in degrees), <code>1,1,1</code> (3D cartesian)</div>
+
+        <div class="row" style="margin-top:10px;">
+            <div class="col">
+                <label>Angle unit:</label>
+                <select name="angle_unit" id="angle_unit">
+                    <option value="rad">Radians</option>
+                    <option value="deg">Degrees</option>
+                </select>
+            </div>
+            <div class="col">
+                <label>Plot (xy projection):</label>
+                <div style="margin-top:6px;">
+                    <label class="inline"><input type="checkbox" name="plot"> Show XY projection</label>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit">Convert</button>
+    </form>
+
+    <div class="card">
+        <h2>Results:</h2>
+        <div id="results-block">
+            {% if result %}
+                {{ result|safe }}
+            {% else %}
+                <em>No results yet. Submit the form to see conversion output.</em>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="assistant-container card">
+        <h3>🧭 Quick Notes on Conventions</h3>
+        <p class="small">Spherical uses the physics convention: <em>ρ</em> (radius), <em>θ</em> (azimuth in xy-plane from +x), <em>φ</em> (inclination from +z). If you prefer the alternative math convention, change the server-side conversion accordingly.</p>
+
+        <h3 style="margin-top:14px">🧠 Wikipedia Assistant</h3>
+        <p style="color:#555;">Search Wikipedia for coordinate system references and explanations.</p>
+        <textarea id="wiki-query" rows="2" style="width:100%;">polar coordinate system</textarea><br>
+        <button onclick="searchWiki()">Search Wikipedia</button>
+        <div id="wiki-result" style="margin-top:12px;">⏳ Loading Wikipedia data...</div>
+        <button id="refresh-btn" onclick="refreshWiki()" style="margin-top:12px;padding:8px 16px;background:#17a2b8;color:white;border:none;border-radius:6px;cursor:pointer;font-size:15px;">🔄 Refresh Content</button>
+    </div>
+
+    <script>
+    // simple client-side convenience: nothing required, server handles parsing
+    (function() {
+        const form = document.getElementById('coords-form');
+        form.addEventListener('submit', function (ev) {
+            // keep user input as-is; server will normalize ^ -> ** and handle symbolic constants
+        });
+    })();
+
+    // ---------- Wikipedia widget (same as emft) ----------
+    async function searchWiki() {
+        const query = document.getElementById("wiki-query").value.trim();
+        const resultDiv = document.getElementById("wiki-result");
+        resultDiv.innerHTML = "⏳ Fetching information from Wikipedia...";
+
+        try {
+            const response = await fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=2&prop=extracts&exintro=true&explaintext=true`);
+            const data = await response.json();
+
+            if (data.query && data.query.pages) {
+                const pages = Object.values(data.query.pages).sort((a,b)=> a.index - b.index);
+                resultDiv.innerHTML = "";
+
+                pages.forEach(page => {
+                    const title = page.title;
+                    const extract = (page.extract || "").split('. ').slice(0, 4).join('. ').replace(/\n/g,' ') + ".";
+                    const url = "https://en.wikipedia.org/?curid=" + page.pageid;
+
+                    const block = document.createElement('div');
+                    block.innerHTML = `
+                        <h4 style="margin-bottom:6px">${title}</h4>
+                        <p style="margin-top:0">${extract}</p>
+                        <a href="${url}" target="_blank">🔗 Read full article</a>
+                        <hr>
+                    `;
+                    resultDiv.appendChild(block);
+                });
+            } else {
+                resultDiv.innerHTML = "❌ No Wikipedia data found for this query.";
+            }
+        } catch (error) {
+            resultDiv.innerHTML = "⚠️ Error fetching Wikipedia content.";
+        }
+    }
+
+    function refreshWiki() {
+        const resultDiv = document.getElementById("wiki-result");
+        resultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+        resultDiv.innerHTML = "🔁 Refreshing Wikipedia content...";
+        setTimeout(searchWiki, 600);
+    }
+
+    window.onload = function() {
+        searchWiki();
+        if (window.MathJax && window.MathJax.typesetPromise) {
+            setTimeout(()=> { try { MathJax.typesetPromise(); } catch(e){} }, 50);
+        }
+    };
+    </script>
+
+</body>
+</html>

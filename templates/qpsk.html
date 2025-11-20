@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>QPSK Simulation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .form-container, .plot-container, .parameter-guide, .assistant-container {
+            width: 80%;
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1, h2, h3 {
+            color: #333;
+            margin-top: 0;
+        }
+        p.description {
+            background: #eef2f7;
+            padding: 15px;
+            border-left: 5px solid #007bff;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            font-weight: bold;
+        }
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        button {
+            margin-top: 15px;
+            padding: 10px 16px;
+            background-color: #28a745;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .param-grid {
+            display: grid;
+            grid-template-columns: 1fr 3fr;
+            gap: 10px 20px;
+            align-items: start;
+        }
+        .param-grid dt {
+            font-weight: bold;
+            color: #333;
+        }
+        .param-grid dd {
+            margin: 0;
+            color: #555;
+        }
+        #wiki-result {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            background: #fafafa;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="form-container">
+        <h1>QPSK constellation</h1>
+        <p class="description">
+            This simulator models <strong>Quadrature Phase Shift Keying (QPSK)</strong> — a modulation scheme widely used in 
+            communication systems such as Wi-Fi, LTE, and satellite links. You can configure the number of transmitted symbols, 
+            noise power in the AWGN channel, and phase noise to visualize how these parameters affect the constellation 
+            and signal waveforms.
+        </p>
+
+<form method="POST">
+    <label>Number of Symbols:</label>
+    <input type="number" name="num_symbols" value="1000"><br>
+    <label>Noise Power:</label>
+    <input type="text" name="noise_power" value="0.01"><br>
+    <label>Phase Noise Strength:</label>
+    <input type="text" name="phase_noise" value="0.1"><br>
+    <input type="submit" value="Generate QPSK"
+style="
+  padding:10px 22px;
+  background:#1e88e5;
+  color:white;
+  font-weight:600;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  transition:0.25s;
+"
+onmouseover="this.style.background='#1669b9'"
+onmouseout="this.style.background='#1e88e5'"
+>
+
+</form>
+
+<!-- 🧠 ChatGPT Generated Summary -->
+{% if summary %}
+<div id="summary-box" style="
+    margin-top:20px;
+    padding:15px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    background:#f9f9f9;
+">
+    <h3>📘 Simulation Summary</h3>
+    <p id="summaryText">{{ summary }}</p>
+
+    <h3>🔉 Read Aloud</h3>
+    <button onclick="readSummary()" class="btn-primary">🔊 Read Summary</button>
+    <button onclick="stopSummary()" class="btn-secondary" style="margin-left:8px;">⏹ Stop</button>
+</div>
+{% endif %}
+
+{% if plots %}
+    {% for p in plots %}
+        <div style="text-align:center; margin:20px;">{{ p|safe }}</div>
+    {% endfor %}
+{% endif %}
+
+{% if error %}
+    <p style="color:red;">Error: {{ error }}</p>
+{% endif %}
+
+
+<!-- 📘 Parameter Guide -->
+<div class="parameter-guide">
+    <h2>📘 Parameter Guide</h2>
+    <dl class="param-grid">
+        <dt>Number of Symbols</dt>
+        <dd>
+            Number of bits (symbols) to modulate and transmit.  
+            <strong>Typical Range:</strong> 100 – 10,000.  
+            Higher values give smoother constellation plots.
+        </dd>
+
+        <dt>AWGN Noise Power</dt>
+        <dd>
+            Power of the additive Gaussian noise in the channel.  
+            <strong>Typical Range:</strong> 0.001 – 0.1.  
+            Increasing this blurs the constellation and lowers SNR.
+        </dd>
+
+        <dt>Phase Noise Strength</dt>
+        <dd>
+            Random phase variation added to the carrier.  
+            <strong>Typical Range:</strong> 0 – 0.5 radians.  
+            Simulates oscillator instability or phase jitter.
+        </dd>
+    </dl>
+</div>
+
+<!-- 🧠 Wikipedia Assistant -->
+<div class="assistant-container">
+    <h3>🧠 Wikipedia Assistant</h3>
+    <p style="color:#555;">
+        Explore more about <strong>QPSK modulation, constellation diagrams, and digital communication systems</strong>.  
+        This section automatically fetches the top 2 most relevant Wikipedia summaries for your query.
+    </p>
+
+    <textarea id="wiki-query" rows="3" style="width:100%;">Quadrature constellation</textarea><br>
+    <button onclick="searchWiki()">Search Wikipedia</button>
+
+    <div id="wiki-result">⏳ Loading Wikipedia data...</div>
+    <button id="refresh-btn" onclick="refreshWiki()" 
+        style="margin-top:12px;padding:8px 16px;background:#17a2b8;color:white;
+               border:none;border-radius:6px;cursor:pointer;font-size:15px;">
+        🔄 Refresh Content
+    </button>
+</div>
+
+<script>
+/* -----------------------------
+   🔍 Wikipedia Search
+------------------------------ */
+async function searchWiki() {
+    const query = document.getElementById("wiki-query").value.trim();
+    const resultDiv = document.getElementById("wiki-result");
+    resultDiv.innerHTML = "⏳ Fetching information from Wikipedia...";
+
+    try {
+        const response = await fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=2&prop=extracts&exintro=true&explaintext=true`);
+        const data = await response.json();
+
+        if (data.query && data.query.pages) {
+            const pages = Object.values(data.query.pages);
+            resultDiv.innerHTML = "";
+
+            pages.forEach(page => {
+                const title = page.title;
+                const extract = page.extract.split(". ").slice(0, 4).join(". ") + ".";
+                const url = "https://en.wikipedia.org/?curid=" + page.pageid;
+
+                resultDiv.innerHTML += `
+                    <h4>${title}</h4>
+                    <p>${extract}</p>
+                    <a href="${url}" target="_blank">🔗 Read full article</a>
+                    <hr>
+                `;
+            });
+        } else {
+            resultDiv.innerHTML = "❌ No Wikipedia data found for this query.";
+        }
+    } catch (error) {
+        resultDiv.innerHTML = "⚠️ Error fetching Wikipedia content.";
+    }
+}
+
+function refreshWiki() {
+    const resultDiv = document.getElementById("wiki-result");
+    resultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+    resultDiv.innerHTML = "🔁 Refreshing Wikipedia content...";
+    setTimeout(searchWiki, 600);
+}
+
+window.onload = function() {
+    searchWiki();
+};
+
+</script>
+
+</body>
+
+</html>

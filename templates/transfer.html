@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Trannsfer function Plots</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .form-container, .plot-container, .parameter-guide, .assistant-container {
+            width: 90%;
+            max-width: 900px;
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+        h1, h2, h3 { margin-top: 0; color: #222; }
+        .description {
+            background: #eef6ff;
+            padding: 14px;
+            border-left: 5px solid #007bff;
+            border-radius: 6px;
+            line-height: 1.6;
+        }
+        form {
+            display: block;
+            max-width: 700px;
+            margin-top: 12px;
+        }
+        label {
+            display: block;
+            margin-top: 12px;
+            font-weight: bold;
+        }
+        input[type="number"], input[type="text"], select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 6px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 15px;
+        }
+        .small-note { font-size: 0.9em; color: #555; margin-top:6px; }
+        button, input[type="submit"] {
+            margin-top: 16px;
+            padding: 10px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-primary:hover { background: #0056b3; }
+        .btn-secondary { background: #17a2b8; color: white; }
+        .btn-secondary:hover { background: #117a8b; }
+        .error { color: #b00020; margin-top: 12px; }
+        .param-grid { display: grid; grid-template-columns: 1fr 3fr; gap: 10px 20px; align-items: start; }
+        .param-grid dt { font-weight: bold; color: #222; }
+        .param-grid dd { margin: 0; color: #444; }
+        #wiki-result { border: 1px solid #e3e3e3; padding: 14px; border-radius: 8px; background: #fafafa; margin-top: 12px; min-height: 120px; }
+        hr.small { border: 0; border-top: 1px solid #eee; margin: 12px 0; }
+    </style>
+</head>
+<body>
+    <h1>Transfer Function Plotter</h1>
+    <form method="POST">
+        <label>Enter Transfer Function H(s):</label><br>
+        <input type="text" name="tf_expr" placeholder="Example: s/(s+2)" value="{{ tf_expr }}">
+
+        <label>Select plots:</label><br>
+        <input type="checkbox" name="plots" value="1"> Pole-Zero Plot<br>
+        <input type="checkbox" name="plots" value="2"> Bode Plot<br>
+        <input type="checkbox" name="plots" value="3"> Nyquist Plot<br>
+        <input type="checkbox" name="plots" value="4"> Nichols Plot<br><br>
+
+        <button type="submit">Generate Plots</button>
+    </form>
+        <div class="parameter-guide" style="
+        background:#fff8e6;
+        border-left:5px solid #f0ad4e;
+        padding:12px;
+        border-radius:6px;
+        margin-top:15px;
+        line-height:1.6;
+    ">
+        <h3 style="margin-top:0;">⚙️ Transfer Function Input Guide</h3>
+        <p>
+            Write the transfer function using <strong>Python-control syntax</strong>.<br>
+            <strong>Always use parentheses when multiplying terms in the denominator.</strong>
+        </p>
+
+        <ul style="margin-top:8px; padding-left:20px;">
+            <li><strong>✔️ Correct:</strong> <code>s/((s+2)*(s+3))</code></li>
+            <li><strong>❌ Wrong:</strong> <code>s/(s+2)(s+3)</code></li>
+        </ul>
+
+        <p style="margin-top:10px;">
+            Other valid examples:
+        </p>
+        <ul style="margin-left:20px;">
+            <li><code>(s+5)/(s^2 + 3*s + 2)</code></li>
+            <li><code>(s+1)/(s*(s+4))</code></li>
+            <li><code>tf([1, 5], [1, 3, 2])</code></li>
+            <li><code>zpk([1], [2, 3], 4)</code></li>
+        </ul>
+
+        <p style="margin-top:10px; color:#444;">
+            Use <code>s</code> as the Laplace variable.  
+            Multiplication between factors must always be explicit using <code>*</code>.
+        </p>
+    </div>
+
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+
+    {% if results %}
+        {% for r in results %}
+            <h3>{{ r.description }}</h3>
+            {{ r.plot_html | safe }}
+            <hr>
+        {% endfor %}
+    {% endif %}
+    <div class="assistant-container">
+        <h3>🧠 Wikipedia Assistant</h3>
+        <p style="color:#555;">
+            Learn about <strong>Transfer function plots</strong>, Bode plot, Nyquist plot, Nichols plot, Pole-Zero plot.
+            Top two relevant Wikipedia summaries are auto-loaded below — click the link to open the full article.
+        </p>
+
+        <textarea id="wiki-query" rows="3" style="width:100%;"></textarea><br>
+        <button type="button" onclick="searchWiki()" class="btn-primary">Search Wikipedia</button>
+        <button type="button" onclick="refreshWiki()" class="btn-secondary" style="margin-left:8px;">🔄 Refresh Content</button>
+        <!-- Put these next to the existing Wiki buttons -->
+        <button type="button" id="wiki-read-btn" class="btn-primary" onclick="speakWiki()">🔊 Read</button>
+        <button type="button" id="wiki-stop-btn"  class="btn-secondary" onclick="stopSpeaking()">⏹ Stop</button>
+
+        <div id="wiki-result">⏳ Loading Wikipedia data...</div>
+    </div>
+
+    <script>
+    async function searchWiki() {
+        const query = document.getElementById("wiki-query").value.trim();
+        const resultDiv = document.getElementById("wiki-result");
+        if (!query) { resultDiv.innerHTML = "❌ Enter a search query."; return; }
+        resultDiv.innerHTML = "⏳ Fetching information from Wikipedia...";
+
+        try {
+            const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=4&prop=extracts&exintro=true&explaintext=true`;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (!data.query || !data.query.pages) {
+                resultDiv.innerHTML = "❌ No Wikipedia data found for this query.";
+                return;
+            }
+
+            const pages = Object.values(data.query.pages).sort((a,b) => (a.index||0)-(b.index||0));
+            let html = "";
+            for (const page of pages) {
+                const title = page.title;
+                const extract = page.extract ? page.extract.split(/(?<=\.)\s+/).slice(0, 4).join(' ') : "(No summary available)";
+                const urlPage = "https://en.wikipedia.org/?curid=" + page.pageid;
+
+                html += `
+                    <div style="margin-bottom:14px;">
+                        <h4 style="margin:6px 0 8px 0;color:#0066cc;">${title}</h4>
+                        <p style="line-height:1.6;margin:0 0 8px 0;color:#333;">${extract}</p>
+                        <a href="${urlPage}" target="_blank" rel="noopener noreferrer">🔗 Read full article</a>
+                    </div>
+                    <hr class="small">
+                `;
+            }
+
+            html += `<p style="text-align:center;color:#666;margin-top:8px;">— End of summary —</p>`;
+            resultDiv.innerHTML = html;
+        } catch (err) {
+            console.error(err);
+            resultDiv.innerHTML = "⚠️ Error fetching Wikipedia content.";
+        }
+    }
+
+    function refreshWiki() {
+        const resultDiv = document.getElementById("wiki-result");
+        resultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+        resultDiv.innerHTML = "🔁 Refreshing Wikipedia content...";
+        setTimeout(searchWiki, 600);
+    }
+
+   window.onload = function() { 
+    document.getElementById("wiki-query").value = "Bode plot, Nyquist plot, Nichols plot";
+    searchWiki(); 
+};
+    </script>
+    <script>
+    /* ---------- keep your existing makeSpoken() here (unchanged) ---------- */
+    /* ... existing makeSpoken() ... */
+        function makeSpoken(text) {
+        if (!text) return '';
+
+        let s = String(text);
+
+        // Emojis/ticks => words
+        s = s.replace(/✅/g, ' yes').replace(/❌/g, ' no');
+
+        // Common dsp/math phrases
+        s = s.replace(/\bx\[n\]/gi, 'x of n');
+        s = s.replace(/\by\[n\]/gi, 'y of n');
+
+        // Replace common operators with words
+        s = s.replace(/\*/g, ' times ');
+        s = s.replace(/\^/g, ' to the power of ');
+        s = s.replace(/\//g, ' divided by ');
+
+        // Replace plus/minus but keep negative sign cases
+        s = s.replace(/\s*\+\s*/g, ' plus ');
+        s = s.replace(/\s*-\s*/g, ' minus ');
+
+        // Remove parentheses and brackets, but keep their content
+        s = s.replace(/[\[\]\(\)]/g, ' ');
+
+        // Convert colon separators to a small pause
+        s = s.replace(/:\s*/g, ': ');
+
+        // Ensure sequences like "1 2 3" become "1, 2, 3"
+        s = s.replace(/(\d)\s+(\d)/g, '$1, $2');
+
+        s = s.replace(/\s+/g, ' ').trim();
+        return s;
+    }
+
+    /**
+     * Build a clean, speech-friendly string from the wiki-result element.
+     * It picks up the title and the first paragraph from each article block.
+     */
+    function wikiSpokenText() {
+        const box = document.getElementById('wiki-result');
+        if (!box) return '';
+
+        // If wiki-result contains placeholders or errors, read those directly
+        const rawText = box.innerText || box.textContent || '';
+        if (!rawText.trim()) return '';
+
+        // Try to create a compact spoken summary:
+        // If the page contains multiple article blocks, collect title + first sentence of each.
+        // We assume each article block has a <h4> (title) and a following <p> (summary) as in template.
+        const titles = box.querySelectorAll('h4');
+        if (titles.length === 0) {
+            // Fallback: speak the whole text (sanitized)
+            return makeSpoken(rawText);
+        }
+
+        const parts = [];
+        titles.forEach((h4) => {
+            const title = h4.innerText.trim();
+            // find next <p> sibling (summary)
+            let summary = '';
+            let sibling = h4.nextElementSibling;
+            while (sibling && sibling.tagName.toLowerCase() !== 'p') {
+                sibling = sibling.nextElementSibling;
+            }
+            if (sibling) summary = sibling.innerText.trim();
+
+            // short-first-sentence: split on period, take first 1-2 sentences
+            let short = summary;
+            if (short) {
+                const sentences = short.split(/(?<=\.)\s+/).filter(Boolean);
+                short = sentences.slice(0, 2).join(' ');
+            }
+
+            if (title) parts.push(`${title}. ${short || ''}`);
+        });
+
+        // join with small verbal pause
+        const joined = parts.join(' || ');
+        return makeSpoken(joined || rawText);
+    }
+
+    /**
+     * Start speaking the wiki content.
+     */
+    function speakWiki() {
+        const spoken = wikiSpokenText();
+        if (!spoken) {
+            const msgEmpty = new SpeechSynthesisUtterance("No Wikipedia content to read.");
+            msgEmpty.lang = 'en-US';
+            speechSynthesis.cancel();
+            speechSynthesis.speak(msgEmpty);
+            return;
+        }
+
+        // Prepare utterance
+        const msg = new SpeechSynthesisUtterance(spoken);
+        msg.lang = 'en-US';
+        msg.rate = 0.95;   // slightly slower than default
+        msg.pitch = 1;
+        msg.volume = 1;
+
+        // UI state: highlight read button while speaking
+        const readBtn = document.getElementById('wiki-read-btn');
+        const stopBtn = document.getElementById('wiki-stop-btn');
+        if (readBtn) readBtn.disabled = true;
+        if (stopBtn) stopBtn.disabled = false;
+
+        // When complete or cancelled, restore buttons
+        msg.onend = msg.onerror = () => {
+            if (readBtn) readBtn.disabled = false;
+            if (stopBtn) stopBtn.disabled = true;
+        };
+
+        // Cancel any previous speech and speak
+        speechSynthesis.cancel();
+        speechSynthesis.speak(msg);
+    }
+
+    /**
+     * Stop speaking immediately.
+     */
+    function stopSpeaking() {
+        speechSynthesis.cancel();
+        const readBtn = document.getElementById('wiki-read-btn');
+        const stopBtn = document.getElementById('wiki-stop-btn');
+        if (readBtn) readBtn.disabled = false;
+        if (stopBtn) stopBtn.disabled = true;
+    }
+
+    /* --------- Integrate with existing wiki search flow ---------- */
+    /* After new wiki content is loaded (inside searchWiki()), call a small visual cue:
+    - enable/disable buttons properly, and optionally auto-read (disabled by default).
+    Insert these lines at the end of your existing searchWiki() success path where you set resultDiv.innerHTML = html;
+    */
+    function wikiPostLoadSetup() {
+        const readBtn = document.getElementById('wiki-read-btn');
+        const stopBtn = document.getElementById('wiki-stop-btn');
+        if (readBtn) readBtn.disabled = false;
+        if (stopBtn) stopBtn.disabled = true;
+    }
+    // Call wikiPostLoadSetup() at the end of searchWiki() once HTML injected.
+    // Example: after `resultDiv.innerHTML = html;` add `wikiPostLoadSetup();`
+
+    // Auto-setup on page load (if wiki content is already present)
+    window.addEventListener('load', () => {
+        // ensure buttons exist and initial state
+        wikiPostLoadSetup();
+    });
+    </script>
+
+</body>
+</html>
+

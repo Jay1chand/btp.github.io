@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Analog Circuit Simulator</title>
+<style>
+body { font-family: Arial; margin: 20px; background: #f0f4ff; }
+.container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 0 8px #aaa; }
+input { width: 80px; }
+button { padding: 6px 10px; }
+img { width: 100%; border-radius: 5px; }
+</style>
+</head>
+
+<body>
+<h1>Analog Circuit Simulator</h1>
+<div class="container">
+
+<!-- Half Wave -->
+<div class="card">
+<h2>Half-Wave Rectifier</h2>
+<img src="{{ url_for('static', filename='/plots/halfwave.png') }}" width="400">
+<form method="POST">
+<input type="hidden" name="circuit" value="half">
+V<sub>p</sub> <input name="Vp" value="10"> |
+V<sub>k</sub>-Diode <input name="Vk" value="0.7"><br><br>
+R<sub>L</sub> <input name="Rl" value="5"> |
+f <input name="freq" value="50"><br><br>
+<button>Simulate</button>
+</form>
+</div>
+
+<!-- Full Wave -->
+<div class="card">
+<h2>Full-Wave Rectifier</h2>
+<img src="{{ url_for('static', filename='/plots/fullwave.png') }}" width="400">
+<form method="POST">
+<input type="hidden" name="circuit" value="full">
+V<sub>p</sub> <input name="Vp" value="10"> |
+V<sub>k</sub>-Diode <input name="Vk" value="0.7"><br><br>
+R<sub>L</sub> <input name="Rl" value="5"> |
+f <input name="freq" value="50"><br><br>
+<button>Simulate</button>
+</form>
+</div>
+
+<!-- RC Filter -->
+<div class="card">
+<h2>RC Low-Pass Filter</h2>
+<img src="{{ url_for('static', filename='/plots/RC.png') }}" width="400">
+<form method="POST">
+<input type="hidden" name="circuit" value="rc">
+V<sub>in</sub> <input name="Vin" value="5"> |
+R <input name="R" value="1000"><br><br>
+C <input name="C" value="0.000001"> |
+f <input name="freq" value="1000"><br><br>
+<button>Simulate</button>
+</form>
+</div>
+
+<!-- RL -->
+<div class="card">
+<h2>RL Circuit</h2>
+<img src="{{ url_for('static', filename='/plots/RL.png') }}" width="400">
+<form method="POST">
+<input type="hidden" name="circuit" value="rl">
+V<sub>in</sub> <input name="Vin" value="5"> |
+R<sub>1</sub> <input name="R" value="50"><br><br>
+L<sub>1</sub> <input name="L" value="0.01"> |
+f <input name="freq" value="1000"><br><br>
+<button>Simulate</button>
+</form>
+</div>
+
+<!-- RLC -->
+<div class="card">
+<h2>RLC Band-Pass Circuit</h2>
+<img src="{{ url_for('static', filename='/plots/RLC.png') }}" width="400">
+<form method="POST">
+<input type="hidden" name="circuit" value="rlc">
+V<sub>in</sub> <input name="Vin" value="5"> |
+R<sub>L</sub> <input name="R" value="20"><br><br>
+L <input name="L" value="0.01"> |
+C <input name="C" value="0.000001"><br><br>
+f <input name="freq" value="10000"><br><br>
+<button>Simulate</button>
+</form>
+</div>
+
+</div>
+
+<hr>
+<h2>Simulation Output</h2>
+<div>
+{% if plot %} {{ plot|safe }} {% else %} <em>No Simulation Yet</em> {% endif %}
+</div>
+
+<div class="assistant-container">
+    <h3>🧠 Wikipedia Assistant</h3>
+    <p style="color:#555;">
+        Explore more about <strong>Half-wave rectifier, full-wave rectifier, RC circuit, RL circuit, RLC circuit</strong>.  
+        This section automatically fetches top Wikipedia summaries.
+    </p>
+
+    <textarea id="wiki-query" rows="3" style="width:100%;">Rectifier, RC circuit, RL circuit, RLC circuit</textarea><br>
+    <button onclick="searchWiki()">Search Wikipedia</button>
+
+    <div id="wiki-result">⏳ Loading Wikipedia data...</div>
+
+    <button id="refresh-btn" onclick="refreshWiki()" 
+        style="margin-top:12px;padding:8px 16px;background:#17a2b8;color:white;
+               border:none;border-radius:6px;cursor:pointer;font-size:15px;">
+        🔄 Refresh Content
+    </button>
+</div>
+
+<script>
+async function fetchWikiArticle(topic) {
+    try {
+        const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&prop=extracts&exintro=true&explaintext=true&titles=${encodeURIComponent(topic)}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+        const pages = data.query.pages;
+
+        const page = Object.values(pages)[0];
+
+        if (!page.extract) return `<p>❌ No data found for <b>${topic}</b></p>`;
+
+        return `
+            <h4>${page.title}</h4>
+            <p>${page.extract.split(". ").slice(0, 4).join(". ")}.</p>
+            <a href="https://en.wikipedia.org/?curid=${page.pageid}" target="_blank">🔗 Full Article</a>
+            <hr>
+        `;
+    } catch {
+        return `<p>⚠️ Error fetching Wikipedia data for <b>${topic}</b></p>`;
+    }
+}
+
+async function searchWiki() {
+    const query = document.getElementById("wiki-query").value.trim();
+    const resultDiv = document.getElementById("wiki-result");
+    resultDiv.innerHTML = "⏳ Fetching information from Wikipedia...";
+
+    const topics = query.split(",").map(t => t.trim());
+    let results = "";
+
+    for (const topic of topics) {
+        results += await fetchWikiArticle(topic);
+    }
+
+    resultDiv.innerHTML = results || "❌ No Wikipedia data found.";
+}
+
+function refreshWiki() {
+    const resultDiv = document.getElementById("wiki-result");
+    resultDiv.scrollIntoView({ behavior: "smooth" });
+    resultDiv.innerHTML = "🔁 Refreshing Wikipedia content...";
+    setTimeout(searchWiki, 600);
+}
+
+window.onload = searchWiki;
+</script>
+
+</body>
+</html>

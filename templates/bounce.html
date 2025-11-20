@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Voltage Bounce Diagram Calculator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .form-container, .plot-container, .parameter-guide, .assistant-container {
+            width: 80%;
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            margin-top: 0;
+        }
+        input[type="text"], select {
+            width: 100%;
+            padding: 8px;
+            margin: 8px 0;
+            box-sizing: border-box;
+        }
+        input[type="submit"], button {
+            padding: 10px;
+            background-color: #28a745;
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+        input[type="submit"]:hover, button:hover {
+            background-color: #218838;
+        }
+        .param-grid {
+            display: grid;
+            grid-template-columns: 1fr 3fr;
+            gap: 10px 20px;
+            align-items: start;
+        }
+        .param-grid dt {
+            font-weight: bold;
+            color: #333;
+        }
+        .param-grid dd {
+            margin: 0;
+            color: #555;
+        }
+        #wiki-result {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            background: #fafafa;
+            margin-top: 15px;
+        }
+
+        /* small tweaks for the two-wall panel */
+        .panel {
+            padding: 12px;
+            border: 1px solid #ccc;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            background: #fbfbfb;
+        }
+        .inline-row { display:flex; gap:10px; }
+        .inline-row > div { flex:1; }
+    </style>
+</head>
+<body>
+
+    <div class="form-container">
+        <h1>Voltage Bounce Diagram Calculator</h1>
+        <div style="width:80%; margin:15px auto; padding:12px; background:#fff; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.08);">
+    <h3 style="margin:0 0 8px 0;">Quick Parameter Guide</h3>
+
+    <p style="margin:4px 0;"><strong>Mode:</strong>  
+        <code>tdr</code> = transmission line, <code>two_wall</code> = closed bounce system.</p>
+
+    <p style="margin:4px 0;"><strong>V0:</strong> Initial pulse amplitude (V).</p>
+    <p style="margin:4px 0;"><strong>ΓL, ΓR:</strong> Reflection coefficients (e.g., <code>0.5</code>, <code>-1</code>, <code>0.2</code>).</p>
+    <p style="margin:4px 0;"><strong>Start side:</strong> <code>left</code> or <code>right</code>.</p>
+
+    <p style="margin:4px 0;"><strong>td:</strong> One-way delay (ns).  
+        <strong>n_reflections:</strong> Number of bounces.</p>
+
+    <p style="margin:4px 0;"><strong>TDR only:</strong> Z₀, Z<sub>L</sub>, Z<sub>s</sub> (Ω), step voltage, observe: load/source.</p>
+
+    <p style="margin:6px 0; color:#555;">Tip: Γ negative → signal flips polarity on reflection.</p>
+    </div>
+
+    <p class="description">
+        Simulate TDR (transmission line) bounces or a closed two-wall bounce diagram.
+        Choose a mode below.
+    </p>
+
+    <form method="POST" novalidate>
+        <!-- MODE SELECT -->
+        <label><strong>Mode:</strong></label><br>
+        <input type="radio" name="mode" value="tdr" id="modeTDR"
+            {% if (request.form.get('mode') or 'tdr') == 'tdr' %}checked{% endif %}
+            onclick="toggleModes()"> Transmission Line (TDR)<br>
+        <input type="radio" name="mode" value="two_wall" id="modeTWO"
+            {% if request.form.get('mode') == 'two_wall' %}checked{% endif %}
+            onclick="toggleModes()"> Two-Wall Bounce<br><br>
+
+        <!-- TWO-WALL INPUTS -->
+        <div id="twoWallInputs" class="panel" style="display:none;">
+            <strong>Two-Wall System Parameters</strong><br><br>
+
+            <label>Initial Pulse Amplitude (V0):</label>
+            <input type="text" name="V0" id="V0"
+                   value="{{ request.form.get('V0', '1') }}">
+
+            <label>Γ Left Wall (Gamma_L):</label>
+            <input type="text" name="Gamma_L" id="Gamma_L"
+                   value="{{ request.form.get('Gamma_L', '0.5') }}">
+
+            <label>Γ Right Wall (Gamma_R):</label>
+            <input type="text" name="Gamma_R" id="Gamma_R"
+                   value="{{ request.form.get('Gamma_R', '-0.3') }}">
+
+            <label>Start side:</label>
+            <select name="start_side" id="start_side">
+                <option value="left" {% if (request.form.get('start_side') or 'left') == 'left' %}selected{% endif %}>Left</option>
+                <option value="right" {% if request.form.get('start_side') == 'right' %}selected{% endif %}>Right</option>
+            </select>
+        </div>
+
+        <!-- TDR INPUTS -->
+        <div id="tdrInputs" class="panel">
+            <strong>TDR Transmission Line Parameters</strong><br><br>
+
+            <label>Line Impedance Z₀ (Ω):</label>
+            <input type="text" name="Z0" value="{{ request.form.get('Z0', '50') }}">
+
+            <label>Load Impedance Z<sub>L</sub> (Ω):</label>
+            <input type="text" name="ZL" value="{{ request.form.get('ZL', '100') }}">
+
+            <label>Source Impedance Z<sub>s</sub> (Ω):</label>
+            <input type="text" name="Zs" value="{{ request.form.get('Zs', '75') }}">
+
+            <label>Step Voltage (V):</label>
+            <input type="text" name="Vstep" value="{{ request.form.get('Vstep', '1') }}">
+
+            <label>Observe at:</label>
+            <select name="observe">
+                <option value="load" {% if request.form.get('observe') == 'load' %}selected{% endif %}>Load</option>
+                <option value="source" {% if request.form.get('observe') == 'source' %}selected{% endif %}>Source</option>
+            </select>
+        </div>
+
+        <!-- COMMON INPUTS -->
+        <div class="panel">
+            <strong>Common Parameters</strong><br>
+            <div class="inline-row">
+                <div>
+                    <label>One-way Delay (ns):</label>
+                    <input type="text" name="td" value="{{ request.form.get('td', '5') }}">
+                </div>
+                <div>
+                    <label>Number of Reflections:</label>
+                    <input type="text" name="n_reflections" value="{{ request.form.get('n_reflections', '10') }}">
+                </div>
+            </div>
+        </div>
+
+        <input type="submit" value="Simulate" style="margin-top:10px;">
+    </form>
+</div>
+
+<!-- PLOT AREA -->
+<div class="plot-container">
+    {{ result|safe }}
+    {{ plot_html|safe }}
+</div>
+
+<!-- Assistant / Wikipedia -->
+<div class="assistant-container">
+    <h3>🧠 Wikipedia Assistant</h3>
+    <p style="color:#555;">
+        Explore more about <strong>Voltage Bounce Diagram</strong>.
+    </p>
+
+    <textarea id="wiki-query" rows="3" style="width:100%;">Transmission and reflection diagram</textarea><br>
+    <button onclick="searchWiki()">Search Wikipedia</button>
+
+    <div id="wiki-result">⏳ Loading Wikipedia data...</div>
+    <button id="refresh-btn" onclick="refreshWiki()"
+        style="margin-top:12px;padding:8px 16px;background:#17a2b8;color:white;
+               border:none;border-radius:6px;cursor:pointer;font-size:15px;">
+        🔄 Refresh Content
+    </button>
+</div>
+
+<script>
+    function toggleModes() {
+        const modeTDR = document.getElementById('modeTDR').checked;
+        document.getElementById('tdrInputs').style.display = modeTDR ? 'block' : 'none';
+        document.getElementById('twoWallInputs').style.display = modeTDR ? 'none' : 'block';
+    }
+
+    // Call on load to set proper visibility (handles server-rendered checked state)
+    window.addEventListener('DOMContentLoaded', (event) => {
+        toggleModes();
+    });
+
+    // ----------------- Wikipedia widget -----------------
+    async function searchWiki() {
+        const query = document.getElementById("wiki-query").value.trim();
+        const resultDiv = document.getElementById("wiki-result");
+        resultDiv.innerHTML = "⏳ Fetching information from Wikipedia...";
+
+        try {
+            const response = await fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=2&prop=extracts&exintro=true&explaintext=true`);
+            const data = await response.json();
+
+            if (data.query && data.query.pages) {
+                const pages = Object.values(data.query.pages).sort((a,b)=> a.index - b.index);
+                resultDiv.innerHTML = "";
+
+                pages.forEach(page => {
+                    const title = page.title;
+                    const extract = (page.extract || "").split(". ").slice(0, 4).join(". ") + ".";
+                    const url = "https://en.wikipedia.org/?curid=" + page.pageid;
+
+                    resultDiv.innerHTML += `
+                        <h4>${title}</h4>
+                        <p>${extract}</p>
+                        <a href="${url}" target="_blank">🔗 Read full article</a>
+                        <hr>
+                    `;
+                });
+            } else {
+                resultDiv.innerHTML = "❌ No Wikipedia data found for this query.";
+            }
+        } catch (error) {
+            resultDiv.innerHTML = "⚠️ Error fetching Wikipedia content.";
+        }
+    }
+
+    function refreshWiki() {
+        const resultDiv = document.getElementById("wiki-result");
+        resultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+        resultDiv.innerHTML = "🔁 Refreshing Wikipedia content...";
+        setTimeout(searchWiki, 600);
+    }
+
+    window.onload = function() {
+        searchWiki();
+    };
+</script>
+
+</body>
+</html>

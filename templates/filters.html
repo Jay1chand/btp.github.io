@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Filters</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f8f9fa;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .form-container, .assistant-container {
+        width: 90%;
+        max-width: 900px;
+        background: white;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+
+    h1, h2, h3 { margin-top: 0; color: #222; }
+
+    .card {
+        background: #fff;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 15px;
+        box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+    }
+
+    .note {
+        background:#eef6ff;
+        padding:14px;
+        border-left:5px solid #007bff;
+        border-radius:6px;
+        width:90%;
+        max-width:900px;
+    }
+
+    label { display: block; margin-top: 12px; font-weight: bold; }
+
+    input[type="number"], input[type="text"], select {
+        width: 100%;
+        padding: 8px;
+        margin-top: 6px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        font-size: 15px;
+    }
+
+    button {
+        margin-top: 16px;
+        padding: 10px 16px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-size: 15px;
+    }
+
+    .btn-primary { background: #007bff; color:white; }
+    .btn-primary:hover { background:#0056b3; }
+
+    .btn-secondary { background:#17a2b8; color:white; }
+    .btn-secondary:hover { background:#117a8b; }
+
+    #wiki-result {
+        border:1px solid #e3e3e3;
+        padding:14px;
+        border-radius:8px;
+        background:#fafafa;
+        margin-top:12px;
+        min-height:120px;
+    }
+
+    hr.small {
+        border:0;
+        border-top:1px solid #eee;
+        margin:12px 0;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>Filter Generator</h1>
+
+<div class="note">
+    This tool helps you generate <b>Discrete-time</b> and <b>Continuous-time</b> filters.
+</div>
+
+<form method="POST" class="form-container">
+
+    <!-- Domain -->
+    <h3>Filter Domain</h3>
+    <label><input type="radio" name="contin" value="1" checked> Discrete</label>
+    <label><input type="radio" name="contin" value="0"> Continuous</label>
+
+    <!-- Discrete Filter Card -->
+    <div class="card">
+        <h3>Discrete Filter Options</h3>
+
+        <label>Mode:</label>
+        <label><input type="radio" name="coeff_mode" value="1" checked> Coefficients</label>
+        <label><input type="radio" name="coeff_mode" value="0"> ZPK</label>
+
+        <label>Numerator (space separated):</label>
+        <input type="text" name="num">
+
+        <label>Denominator (space separated):</label>
+        <input type="text" name="den">
+
+        <label>Zeros:</label>
+        <input type="text" name="zeros">
+
+        <label>Poles:</label>
+        <input type="text" name="poles">
+
+        <label>Gain:</label>
+        <input type="text" name="gain">
+    </div>
+
+    <!-- Continuous Filter Card -->
+    <div class="card">
+        <h3>Continuous Filter Options</h3>
+
+        <label>Type:</label>
+        <label><input type="radio" name="filt_type" value="1" checked> Butterworth</label>
+        <label><input type="radio" name="filt_type" value="0"> Bessel</label>
+
+        <label>Angular Frequency:</label>
+        <input type="text" name="omega">
+    </div>
+
+    <button type="submit" class="btn-primary">Generate Filter</button>
+
+    {% if result %}
+    <div class="card">
+    <h2>Results:</h2>
+    {{ result|safe }}
+
+    {% if plots_html %}
+    <h2>Plots:</h2>
+    {{ plots_html|safe }}
+    {% endif %}
+    </div>
+    {% endif %}
+
+</form>
+
+
+<!-- Wikipedia Assistant -->
+<div class="assistant-container">
+    <h3>🧠 Wikipedia Assistant</h3>
+    <p>Learn about Filters.</p>
+
+    <textarea id="wiki-query" rows="3" style="width:100%;">Butterworth filter and Bessel filter</textarea><br>
+    <button type="button" onclick="searchWiki()" class="btn-primary">Search Wikipedia</button>
+    <button type="button" onclick="refreshWiki()" class="btn-secondary" style="margin-left:8px;">🔄 Refresh</button>
+    <div style="margin-top:25px;">
+    </div>
+    <div id="wiki-result">⏳ Loading Wikipedia data...</div>
+</div>
+
+
+<script>
+async function searchWiki() {
+    const q = document.getElementById("wiki-query").value.trim();
+    const out = document.getElementById("wiki-result");
+    if (!q) { out.innerHTML="❌ Enter a query."; return; }
+
+    out.innerHTML="⏳ Fetching data...";
+
+    try {
+        const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${encodeURIComponent(q)}&gsrlimit=2&prop=extracts&exintro=true&explaintext=true`;
+        const r = await fetch(url);
+        const data = await r.json();
+        if (!data.query) return out.innerHTML="❌ No results.";
+
+        const pages = Object.values(data.query.pages).sort((a,b)=>a.index-b.index);
+        let html="";
+
+        for (const p of pages) {
+            const desc = (p.extract||"").split(/(?<=\.)\s+/).slice(0,3).join(" ");
+            html+=`
+                <h4 style="color:#0066cc;">${p.title}</h4>
+                <p>${desc}</p>
+                <a href="https://en.wikipedia.org/?curid=${p.pageid}" target="_blank">🔗 Read more</a>
+                <hr class="small">`;
+        }
+
+        out.innerHTML = html + `<p style="text-align:center;color:#666">— End —</p>`;
+    } catch {
+        out.innerHTML="⚠️ Error fetching Wikipedia content.";
+    }
+}
+function refreshWiki(){ document.getElementById("wiki-result").innerHTML="🔁 Refreshing..."; setTimeout(searchWiki,600); }
+window.onload = searchWiki;
+</script>
+
+
+</body>
+</html>

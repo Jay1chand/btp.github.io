@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Image Processing</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .form-container {
+            width: 80%;
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+        }
+        p.description {
+            font-size: 16px;
+            background: #f8f9fa;
+            padding: 10px;
+            border-left: 4px solid #007bff;
+            margin-bottom: 20px;
+        }
+        label {
+            font-weight: bold;
+        }
+        input, select {
+            margin: 5px 0;
+            padding: 5px;
+            width: 100%;
+        }
+        button {
+            padding: 10px;
+            background-color: #007bff;
+            border: none;
+            color: white;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        a.home {
+            display: inline-block;
+            margin-bottom: 15px;
+            text-decoration: none;
+            background: #28a745;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+        }
+        a.home:hover {
+            background: #1e7e34;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <a href="/" class="home">← Back to Homepage</a>
+        <h1>Image Processing Flask App</h1>
+        
+        <p class="description">
+            This app demonstrates basic image processing operations such as scaling, rotation, translation, 
+            shearing, normalization, edge detection, blurring, and morphological transformations. 
+            You can choose an operation, set its parameters, and apply it to the uploaded image for visualization.
+        </p>
+
+        <form method="POST">
+            <label>Choose Operation:</label>
+            <select name="operation" required>
+                <option value="scale">Scale (Zoom/Shrink)</option>
+                <option value="rotate">Rotate</option>
+                <option value="translate">Translate</option>
+                <option value="shear">Shear</option>
+                <option value="normalize">Normalize</option>
+                <option value="edges">Canny Edges</option>
+                <option value="blur">Blur</option>
+                <option value="morphology">Morphology</option>
+            </select><br><br>
+
+            <!-- Params -->
+            Zoom X: <input type="text" name="sx_zoom" value="1.5"><br>
+            Zoom Y: <input type="text" name="sy_zoom" value="1.5"><br>
+            Shrink X: <input type="text" name="sx_shrink" value="0.5"><br>
+            Shrink Y: <input type="text" name="sy_shrink" value="0.5"><br>
+            Angle: <input type="text" name="angle" value="45"><br>
+            Scale: <input type="text" name="scale" value="1.0"><br>
+            Translate X: <input type="text" name="tx" value="50"><br>
+            Translate Y: <input type="text" name="ty" value="30"><br>
+            Shear X: <input type="text" name="shearX" value="0.2"><br>
+            Shear Y: <input type="text" name="shearY" value="0.2"><br>
+            Threshold1: <input type="text" name="t1" value="100"><br>
+            Threshold2: <input type="text" name="t2" value="200"><br><br>
+
+            <button type="submit">Process</button>
+        </form>
+    </div>
+   <div style="background:#e8f0ff; padding:15px; border-radius:10px; margin-bottom:20px; border-left:5px solid #3366ff;">
+    <h3>📝 How to Use</h3>
+    <p>
+        This application allows you to apply different image processing operations using OpenCV.  
+        Follow the steps below to use the tool:
+    </p>
+    <ul>
+        <li>Upload an image from your device</li>
+        <li>Select an operation from the dropdown menu</li>
+        <li>If the selected operation requires parameters (like Resize or Rotate), enter the values</li>
+        <li>Click <b>Process</b> to see the result</li>
+        <li>Processed image will be displayed on the right side</li>
+    </ul>
+
+    <h4>Available Operations</h4>
+    <ul>
+        <li><b>Grayscale</b> – Converts the image to black and white</li>
+        <li><b>Resize</b> – Change width & height of the image</li>
+        <li><b>Rotate</b> – Rotate image by an angle</li>
+        <li><b>Blur</b> – Smooth the image using Gaussian blur</li>
+    </ul>
+
+</div>
+
+</body>
+</html>

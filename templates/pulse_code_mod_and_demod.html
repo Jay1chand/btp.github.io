@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PCM Modulation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .form-container, .plot-container, .parameter-guide, .assistant-container {
+            width: 90%;
+            max-width: 900px;
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+        h1, h2, h3 { margin-top: 0; color: #222; }
+        .description {
+            background: #eef6ff;
+            padding: 14px;
+            border-left: 5px solid #007bff;
+            border-radius: 6px;
+            line-height: 1.6;
+        }
+        form {
+            display: block;
+            max-width: 700px;
+            margin-top: 12px;
+        }
+        label {
+            display: block;
+            margin-top: 12px;
+            font-weight: bold;
+        }
+        input[type="number"], input[type="text"], select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 6px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 15px;
+        }
+        .small-note { font-size: 0.9em; color: #555; margin-top:6px; }
+        button, input[type="submit"] {
+            margin-top: 16px;
+            padding: 10px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-primary:hover { background: #0056b3; }
+        .btn-secondary { background: #17a2b8; color: white; }
+        .btn-secondary:hover { background: #117a8b; }
+        .error { color: #b00020; margin-top: 12px; }
+        .param-grid { display: grid; grid-template-columns: 1fr 3fr; gap: 10px 20px; align-items: start; }
+        .param-grid dt { font-weight: bold; color: #222; }
+        .param-grid dd { margin: 0; color: #444; }
+        #wiki-result { border: 1px solid #e3e3e3; padding: 14px; border-radius: 8px; background: #fafafa; margin-top: 12px; min-height: 120px; }
+        hr.small { border: 0; border-top: 1px solid #eee; margin: 12px 0; }
+    </style>
+</head>
+<body>
+
+    <div class="description">
+        <h2>About Pulse Code Modulation (PCM) and Demodulation</h2>
+        <p>
+            Pulse Code Modulation (PCM) is a digital representation of an analog signal. 
+            The process involves <strong>sampling</strong> the analog signal at discrete time intervals, 
+            <strong>quantizing</strong> the sampled values into a finite set of levels, and 
+            <strong>encoding</strong> these values into binary form.  
+        </p>
+        <p>
+            This page allows you to experiment with PCM by selecting parameters such as 
+            <em>sampling frequency</em>, <em>message frequency</em>, <em>amplitude</em>, 
+            <em>number of bits per sample</em>, and <em>signal duration</em>.  
+            The demodulation process reconstructs the original signal from the quantized samples.
+        </p>
+    </div>
+
+<div class="parameter-guide">
+        <h2>📘 Parameter Guide</h2>
+        <dl class="param-grid">
+            <dt>Sampling Frequency (fs)</dt>
+            <dd>Number of samples taken per second from the analog signal. Higher fs gives more accurate reconstruction. Must satisfy Nyquist: fs ≥ 2 × message frequency.</dd>
+
+            <dt>Message Frequency (fm)</dt>
+            <dd>Frequency of the analog input signal to be sampled and encoded. Determines how fast the waveform oscillates.</dd>
+
+            <dt>Amplitude</dt>
+            <dd>Peak value of the input analog signal being converted to PCM.</dd>
+
+            <dt>Bits per Sample</dt>
+            <dd>Number of bits used to represent each sample. Higher bits reduce quantization error and improve quality.</dd>
+
+            <dt>Signal Duration</dt>
+            <dd>Total time for which the signal is generated and processed during the PCM operation.</dd>
+        </dl>
+    </div>
+
+<form method="post">
+
+    Sampling Frequency (in Hz) :<input type="text" name="sampling_frequency" value="100"><br>
+    Message Frequency (in Hz) :<input type="text" name="message_frequency" value="25"><br>
+    Amplitude:<input type="text" name="amplitude" value="1"><br>
+    Bits per Sample:<input type="text" name="bits" value="3"><br>
+    Signal Duration (in seconds):<input type="text" name="duration" value="2"><br><br>
+
+    <button type="submit">Run PCM</button>
+</form>
+
+{% if result_text %}
+<h3>PCM Analysis Result</h3>
+<pre>{{ result_text }}</pre>
+{% endif %}
+
+{% if plot_msg %}
+<h3>Original Message Signal</h3>
+<div>{{ plot_msg | safe }}</div>
+{% endif %}
+
+{% if plot_quant %}
+<h3>Quantized Signal</h3>
+<div>{{ plot_quant | safe }}</div>
+{% endif %}
+
+{% if plot_recon %}
+<h3>Reconstructed Signal</h3>
+<div>{{ plot_recon | safe }}</div>
+{% endif %}
+
+{% if error %}
+<h3 style="color:red;">Error: {{ error }}</h3>
+{% endif %}
+
+    <!-- Wikipedia Assistant -->
+    <div class="assistant-container">
+        <h3>🧠 Wikipedia Assistant</h3>
+        <p style="color:#555;">
+            Learn about <strong>Pulse Code Modulation</strong>, sampling theory, quantization, and practical considerations.
+            Top two relevant Wikipedia summaries are auto-loaded below — click the link to open the full article.
+        </p>
+
+        <textarea id="wiki-query" rows="3" style="width:100%;">Pulse Code Modulation</textarea><br>
+        <button type="button" onclick="searchWiki()" class="btn-primary">Search Wikipedia</button>
+        <button type="button" onclick="refreshWiki()" class="btn-secondary" style="margin-left:8px;">🔄 Refresh Content</button>
+
+        <div id="wiki-result">⏳ Loading Wikipedia data...</div>
+    </div>
+
+    <script>
+    async function searchWiki() {
+        const query = document.getElementById("wiki-query").value.trim();
+        const resultDiv = document.getElementById("wiki-result");
+        if (!query) { resultDiv.innerHTML = "❌ Enter a search query."; return; }
+        resultDiv.innerHTML = "⏳ Fetching information from Wikipedia...";
+
+        try {
+            const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=2&prop=extracts&exintro=true&explaintext=true`;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (!data.query || !data.query.pages) {
+                resultDiv.innerHTML = "❌ No Wikipedia data found for this query.";
+                return;
+            }
+
+            const pages = Object.values(data.query.pages).sort((a,b) => (a.index||0)-(b.index||0));
+            let html = "";
+            for (const page of pages) {
+                const title = page.title;
+                const extract = page.extract ? page.extract.split(/(?<=\.)\s+/).slice(0, 4).join(' ') : "(No summary available)";
+                const urlPage = "https://en.wikipedia.org/?curid=" + page.pageid;
+
+                html += `
+                    <div style="margin-bottom:14px;">
+                        <h4 style="margin:6px 0 8px 0;color:#0066cc;">${title}</h4>
+                        <p style="line-height:1.6;margin:0 0 8px 0;color:#333;">${extract}</p>
+                        <a href="${urlPage}" target="_blank" rel="noopener noreferrer">🔗 Read full article</a>
+                    </div>
+                    <hr class="small">
+                `;
+            }
+
+            html += `<p style="text-align:center;color:#666;margin-top:8px;">— End of summary —</p>`;
+            resultDiv.innerHTML = html;
+        } catch (err) {
+            console.error(err);
+            resultDiv.innerHTML = "⚠️ Error fetching Wikipedia content.";
+        }
+    }
+
+    function refreshWiki() {
+        const resultDiv = document.getElementById("wiki-result");
+        resultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+        resultDiv.innerHTML = "🔁 Refreshing Wikipedia content...";
+        setTimeout(searchWiki, 600);
+    }
+
+    window.onload = function() { searchWiki(); };
+    </script>
+</body>
+</html>

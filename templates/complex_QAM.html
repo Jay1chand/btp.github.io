@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Complex QAM Modulation and Demodulation</title>
+  <style>
+    :root{ --maxw:950px; --muted:#666; --accent:#0066cc; --card-bg:#fbfbfb; }
+    body{ font-family: Inter, Roboto, "Segoe UI", Arial, sans-serif; background:#f4f6f8; color:#1a1a1a; padding:18px; }
+    .container{ max-width:var(--maxw); margin:18px auto; }
+    .card{ background:var(--card-bg); border-radius:10px; padding:16px; box-shadow: 0 6px 18px rgba(30,30,30,0.06); margin-bottom:16px; }
+    h1{ margin:0 0 8px 0; font-size:1.4rem; }
+    h2{ margin:0 0 8px 0; font-size:1.05rem; }
+    label{ font-size:0.9rem; color:#222; display:block; margin-top:10px; }
+    input[type=text]{ width:100%; max-width:320px; padding:8px 10px; margin-top:6px; border:1px solid #dde4ea; border-radius:6px; }
+    .row{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    .muted{ color:var(--muted); font-size:0.95rem; }
+    .btn{ padding:8px 12px; background:var(--accent); color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600; }
+    .btn.secondary{ background:#e6eefb; color:var(--accent); }
+    .param-grid dt{ font-weight:700; }
+    .param-grid dd{ margin:4px 0 8px 0; color:var(--muted); }
+    .error{ color:#b00020; font-weight:600; margin-top:10px; }
+    .small{ font-size:0.9rem; color:var(--muted); }
+    @media (max-width:720px){ .row{ flex-direction:column; } input[type=text]{ max-width:100%; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Complex QAM Modulation and Demodulation</h1>
+      <p class="muted">
+        Generate a complex baseband signal, upconvert to a real passband, demodulate, 
+        and low-pass filter to recover I/Q.  
+        <br>Scientific notation is fully supported (e.g., <strong>4e9</strong>, <strong>64e6</strong>).
+      </p>
+
+      <div class="card parameter-guide">
+      <h2>📌 Parameter Guide</h2>
+      <dl class="param-grid">
+        <dt>Sampling Frequency (Hz)</dt>
+        <dd>Use scientific notation, e.g. <strong>4.096e9</strong>. Must be &gt; 2×(fc + bandwidth).</dd>
+
+        <dt>Baseband Frequency 1 / 2 (Hz)</dt>
+        <dd>Use low-frequency tones such as <strong>64e6</strong>. Must satisfy fb &lt; fs/2.</dd>
+
+        <dt>Amplitude 1 / 2</dt>
+        <dd>Relative I/Q magnitudes. For balanced QAM, keep them similar.</dd>
+
+        <dt>FFT Size</dt>
+        <dd>Recommended: 1024, 2048, 4096. Higher = better frequency resolution.</dd>
+
+        <dt>Carrier Frequency (Hz)</dt>
+        <dd>Example: <strong>900e6</strong>. Must be &lt; fs/2.</dd>
+      </dl>
+    </div>
+
+    <form method="POST">
+
+        <label>Sampling Frequency (fs):</label><br>
+        <input type="text" name="fs" value="{{ request.form.get('fs', '%.4g' % 4.096e9) }}"><br>
+
+        <label>Baseband Frequency fb1:</label><br>
+        <input type="text" name="fb1" value="{{ request.form.get('fb1', '%.4g' % 64e6) }}"><br>
+
+        <label>Baseband Frequency fb2:</label><br>
+        <input type="text" name="fb2" value="{{ request.form.get('fb2', '%.4g' % 64e6) }}"><br>
+
+        <label>Amplitude A1:</label><br>
+        <input type="text" name="A1" value="{{ request.form.get('A1', '%.4g' % 2) }}"><br>
+
+        <label>Amplitude A2:</label><br>
+        <input type="text" name="A2" value="{{ request.form.get('A2', '%.4g' %  1) }}"><br>
+
+        <label>FFT Size (N_fft):</label><br>
+        <input type="text" name="N_fft" value="{{ request.form.get('N_fft', 2048) }}"><br>
+
+        <label>Carrier Frequency (fc):</label><br>
+        <input type="text" name="fc" value="{{ request.form.get('fc', '%.4g' % 900e6) }}"><br>
+
+         <div style="margin-top:22px;">
+            <button type="submit" class="btn">Generate Plots</button>
+          </div>
+ 
+        {% if error %}
+        <div class="error">Error: {{ error }}</div>
+        {% endif %}
+    </form>
+    </div>
+
+    {% if plot_html %}
+    <div class="card result-container">
+      <h2>Plots</h2>
+      <div>
+        {{ plot_html|safe }}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</body>
+</html>

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Filter Generator</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f4f4f4;
+        }
+        h1, h2, h3 { color: #333; }
+        form {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        label {
+            font-weight: bold;
+        }
+        input[type=text] {
+            width: 100%;
+            padding: 8px;
+            margin-top: 4px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        input[type=radio] {
+            margin-right: 5px;
+        }
+        button {
+            margin-top: 10px;
+            padding: 10px 15px;
+            background: #007BFF;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+        .card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            margin-bottom: 15px;
+        }
+        .note {
+            background: #e9f5ff;
+            border-left: 4px solid #007BFF;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" style="max-width:700px;margin:30px auto;padding:20px;">
+        <h1 style="margin-bottom:15px;">🌊 Reflection & Transmission Coefficients</h1>
+
+        <!-- Intro Section -->
+        <div class="readme" style="line-height:1.6;margin-bottom:20px;">
+            <p>
+                This simulator calculates the <b>Fresnel reflection</b> and <b>transmission coefficients</b> 
+                at a planar boundary between two dielectric media. 
+                Enter the permittivities, permeabilities, and incident amplitude to compute 
+                the reflection and transmission of electromagnetic waves. 
+                Both <b>electric</b> and <b>magnetic</b> field relationships are supported.
+            </p>
+        </div>
+
+        <!-- Optional Diagram -->
+        <div class="diagram" style="text-align:center;margin-bottom:20px;">
+            <img src="{{ url_for('static', filename='images/reflection_transmission_diagram.png') }}" 
+                 alt="Reflection and Transmission Diagram" 
+                 style="max-width:90%;border:1px solid #ccc;border-radius:8px;padding:4px;">
+            <p style="font-size:0.9em;color:#555;">Illustration of reflection and transmission at a dielectric interface.</p>
+        </div>
+
+        <!-- Input Form -->
+        <form method="POST" style="margin-bottom:25px;">
+            <label>ε₁ (Permittivity of Medium 1):</label>
+            <input type="text" name="eps1" value="{{ request.form.get('eps1', '8.85e-12') }}" 
+                   placeholder="8.85e-12" style="width:100%;padding:6px;margin-bottom:10px;">
+
+            <label>μ₁ (Permeability of Medium 1):</label>
+            <input type="text" name="mu1" value="{{ request.form.get('mu1', '1.26e-6') }}" 
+                   placeholder="1.26e-6" style="width:100%;padding:6px;margin-bottom:10px;">
+
+            <label>ε₂ (Permittivity of Medium 2):</label>
+            <input type="text" name="eps2" value="{{ request.form.get('eps2', '4*8.85e-12') }}" 
+                   placeholder="4×8.85e-12" style="width:100%;padding:6px;margin-bottom:10px;">
+
+            <label>μ₂ (Permeability of Medium 2):</label>
+            <input type="text" name="mu2" value="{{ request.form.get('mu2', '1.26e-6') }}" 
+                   placeholder="1.26e-6" style="width:100%;padding:6px;margin-bottom:10px;">
+
+            <label>Incident Electric Field Amplitude (E₀):</label>
+            <input type="text" name="E0" value="{{ request.form.get('E0', '1') }}" 
+                   placeholder="1" style="width:100%;padding:6px;margin-bottom:15px;">
+
+            <label>Incident Angle (degrees):</label>
+            <input type="text" name="theta" value="30">
+
+            <button type="submit" style="padding:8px 16px;">Calculate</button>
+        </form>
+
+        <!-- Results -->
+        {% if result %}
+        <div class="results card" style="padding:15px;border:1px solid #ccc;border-radius:8px;margin-bottom:25px;">
+            <h3 style="margin-bottom:10px;">📊 Computation Results</h3>
+            <div>{{ result|safe }}</div>
+
+            {% if plot_html %}
+            <div style="margin-top:20px;">
+                <h4>Field Coefficients Visualization:</h4>
+                {{ plot_html|safe }}
+                <hr>
+                <h3>Ray Diagram</h3>
+                <div>{{ ray_plot_html|safe }}</div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Parameter Guide -->
+        <div class="parameter-guide" style="margin-top:25px;">
+            <h2>📘 Parameter Guide</h2>
+            <ul style="line-height:1.6;">
+                <li><b>ε₁, ε₂</b>: Absolute permittivities of the two media (in F/m).</li>
+                <li><b>μ₁, μ₂</b>: Absolute permeabilities of the two media (in H/m).</li>
+                <li><b>E₀</b>: Amplitude of the incident electric field.</li>
+                <li><b>Output</b>: Reflection & transmission coefficients for E and H fields.</li>
+            </ul>
+        </div>
+
+        <!-- Wikipedia-based Search Assistant -->
+        <div class="assistant-container" style="margin-top:30px;">
+            <h3>🔍 Search Assistant</h3>
+            <p style="color:#555;line-height:1.6;">
+                Learn more about <strong>Fresnel equations, reflection and transmission coefficients, 
+                electromagnetic boundaries</strong>, and related topics.
+            </p>
+
+            <textarea id="wiki-query" rows="3" style="width:100%;padding:5px;margin-bottom:8px;">
+Fresnel equations reflection and transmission coefficients electromagnetic boundary conditions
+            </textarea>
+            <button onclick="searchWiki()" style="padding:6px 14px;margin-bottom:8px;">Search</button>
+
+            <div id="wiki-result" style="border:1px solid #ddd;padding:10px;min-height:120px;margin-bottom:8px;">
+                ⏳ Loading Wikipedia summaries...
+            </div>
+            <button id="refresh-btn" onclick="refreshWiki()" 
+                style="padding:8px 16px;background:#17a2b8;color:white;border:none;border-radius:6px;cursor:pointer;">
+                🔄 Refresh Content
+            </button>
+        </div>
+
+        <!-- Wikipedia Script (Elaborated summaries) -->
+        <script>
+        async function searchWiki() {
+            const query = document.getElementById("wiki-query").value.trim();
+            const resultDiv = document.getElementById("wiki-result");
+            resultDiv.innerHTML = "⏳ Searching Wikipedia for: <b>" + query + "</b>...";
+            try {
+                const response = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`);
+                const data = await response.json();
+                if (!data.query.search.length) {
+                    resultDiv.innerHTML = "❌ No relevant Wikipedia results found.";
+                    return;
+                }
+
+                const topResults = data.query.search.slice(0, 2);
+                let fullHTML = "";
+
+                for (const res of topResults) {
+                    const title = res.title;
+                    const pageUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(title)}`;
+
+                    // Fetch first paragraph summary
+                    const summaryRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
+                    const summaryData = await summaryRes.json();
+
+                    const extract = summaryData.extract ? summaryData.extract : res.snippet;
+                    fullHTML += `
+                        <div style="margin-bottom:16px;">
+                            <h4 style="margin-bottom:6px;">📘 <a href="${pageUrl}" target="_blank" style="color:#007bff;">${title}</a></h4>
+                            <p style="line-height:1.6;">${extract}</p>
+                        </div>`;
+                }
+
+                resultDiv.innerHTML = fullHTML;
+            } catch (err) {
+                resultDiv.innerHTML = "❌ Couldn't fetch Wikipedia data.";
+            }
+        }
+
+        function refreshWiki() {
+            const query = document.getElementById("wiki-query").value.trim();
+            const resultDiv = document.getElementById("wiki-result");
+            resultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+            resultDiv.innerHTML = "🔁 Refreshing Wikipedia content...";
+            setTimeout(() => searchWiki(), 600);
+        }
+
+        window.onload = function() {
+            searchWiki();
+        };
+        </script>
+    </div>
+</body>
+
+
+
+
+
+</html>

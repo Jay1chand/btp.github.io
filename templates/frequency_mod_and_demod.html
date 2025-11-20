@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Frequency Modulation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .card,
+        .assistant-container {
+            width: 90%;
+            max-width: 900px;
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+        }
+
+        h1, h2, h3 {
+            margin-top: 0;
+            color: #222;
+        }
+
+        label {
+            display: block;
+            margin-top: 12px;
+            font-weight: bold;
+        }
+
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 8px;
+            margin-top: 6px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 15px;
+        }
+
+        input[type="submit"], button {
+            margin-top: 16px;
+            padding: 10px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #17a2b8;
+            color: white;
+            margin-left: 8px;
+        }
+
+        .error {
+            color: #b00020;
+            margin-top: 12px;
+        }
+
+        #wiki-result {
+            border: 1px solid #e3e3e3;
+            padding: 14px;
+            border-radius: 8px;
+            background: #fafafa;
+            margin-top: 12px;
+            min-height: 120px;
+        }
+
+        hr.small {
+            border: 0;
+            border-top: 1px solid #eee;
+            margin: 12px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Back Button -->
+    <a href="/" class="home">← Back to Homepage</a>
+
+    <!-- Header -->
+    <div class="card">
+        <h1>Frequency Modulation and Demodulation</h1>
+        <p>
+            Frequency Modulation (FM) is a technique where the frequency of a carrier signal
+            is varied according to the message signal. Demodulation extracts the
+            original message from the modulated carrier.
+        </p>
+    </div>
+    <div class="card">
+    <h2>📌 FM Parameter Guide</h2>
+    <dl class="param-grid">
+        <dt>Sampling Frequency (f<sub>s</sub>)</dt>
+        <dd>
+            The rate at which the continuous-time signals are sampled for digital processing.
+            <br><strong>Example:</strong> <code>10000</code> Hz  
+            <strong>Rule:</strong> Must be at least 2× the highest frequency (Nyquist).
+        </dd>
+
+        <dt>Message Frequency (f<sub>m</sub>)</dt>
+        <dd>
+            Frequency of the baseband (message) signal that modulates the carrier.
+            <br><strong>Example:</strong> <code>50</code> Hz  
+            Controls how fast the message oscillates.  
+        </dd>
+
+        <dt>Carrier Frequency (f<sub>c</sub>)</dt>
+        <dd>
+            Frequency of the unmodulated carrier signal.  
+            <br><strong>Example:</strong> <code>500</code> Hz  
+            Must be significantly higher than the message frequency.
+        </dd>
+
+        <dt>Amplitude (A<sub>m</sub>)</dt>
+        <dd>
+            Peak amplitude of the message signal.  
+            <br><strong>Example:</strong> <code>1</code>  
+            Larger values create larger frequency deviation in FM.
+        </dd>
+
+        <dt>Frequency Sensitivity (k<sub>f</sub>)</dt>
+        <dd>
+            Determines how much the carrier frequency shifts based on the message amplitude.
+            <br><strong>Units:</strong> Hz per volt (or per unit amplitude)  
+            <br><strong>Example:</strong> <code>100</code>  
+            <strong>Higher k<sub>f</sub></strong> → Stronger frequency deviation → Wider FM bandwidth.
+        </dd>
+
+        <dt>Duration (T)</dt>
+        <dd>
+            Total time length of the simulation (in seconds).  
+            <br><strong>Example:</strong> <code>0.01</code>  
+            Longer duration gives more cycles but increases computation time.
+        </dd>
+    </dl>
+</div>
+
+    <!-- Form -->
+    <div class="card">
+        <h2>Input Parameters</h2>
+        <form method="POST" id="fm-form">
+            <label>Sampling Frequency (Hz):</label>
+            <input type="number" step="any" name="fs" value="{{ request.form.fs or 10000 }}" />
+
+            <label>Message Frequency (Hz):</label>
+            <input type="number" step="any" name="fm" value="{{ request.form.fm or 50 }}" />
+
+            <label>Carrier Frequency (Hz):</label>
+            <input type="number" step="any" name="fc" value="{{ request.form.fc or 500 }}" />
+
+            <label>Amplitude:</label>
+            <input type="number" step="any" name="Am" value="{{ request.form.Am or 1 }}" />
+
+            <label>Frequency Sensitivity (k<sub>f</sub>):</label>
+            <input type="number" step="any" name="kf" value="{{ request.form.kf or 100 }}" />
+
+            <label>Duration (seconds):</label>
+            <input type="number" step="any" name="duration" value="{{ request.form.duration or 0.01 }}" />
+
+            <input type="submit" value="Generate Plot" />
+        </form>
+
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+    </div>
+
+    <!-- Results -->
+    <div class="card">
+        <h2>Results</h2>
+        {{ plot_html | safe }}
+    </div>
+
+    <!-- Wikipedia Assistant -->
+    <div class="assistant-container">
+        <h3>🧠 Wikipedia Assistant</h3>
+        <p style="color:#555;">
+            Learn about <strong>Frequency Modulation</strong> and demodulation concepts.
+            Top results below — click to open full articles.
+        </p>
+
+        <textarea id="wiki-query" rows="3">Frequency Modulation</textarea><br />
+        <button type="button" onclick="searchWiki()" class="btn-primary">Search Wikipedia</button>
+        <button type="button" onclick="refreshWiki()" class="btn-secondary">🔄 Refresh</button>
+
+        <div id="wiki-result">⏳ Loading Wikipedia data...</div>
+    </div>
+
+    <script>
+        async function searchWiki() {
+            const query = document.getElementById("wiki-query").value.trim();
+            const resultDiv = document.getElementById("wiki-result");
+            if (!query) {
+                resultDiv.innerHTML = "❌ Enter a search query.";
+                return;
+            }
+            resultDiv.innerHTML = "⏳ Fetching from Wikipedia...";
+
+            try {
+                const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=2&prop=extracts&exintro=true&explaintext=true`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (!data.query || !data.query.pages) {
+                    resultDiv.innerHTML = "❌ No data found.";
+                    return;
+                }
+
+                const pages = Object.values(data.query.pages).sort((a, b) => (a.index || 0) - (b.index || 0));
+                let html = "";
+
+                for (const page of pages) {
+                    const extract = page.extract
+                        ? page.extract.split(/(?<=\.)\s+/).slice(0, 4).join(" ")
+                        : "(No summary available)";
+
+                    html += `
+                        <div style="margin-bottom:14px;">
+                            <h4 style="color:#0066cc;">${page.title}</h4>
+                            <p style="line-height:1.6; color:#333;">${extract}</p>
+                            <a href="https://en.wikipedia.org/?curid=${page.pageid}" target="_blank">🔗 Full Article</a>
+                        </div>
+                        <hr class="small" />`;
+                }
+                resultDiv.innerHTML = html + `<p style="text-align:center;color:#666;">— End —</p>`;
+
+            } catch (err) {
+                resultDiv.innerHTML = "⚠️ Error fetching data.";
+            }
+        }
+
+        function refreshWiki() {
+            const div = document.getElementById("wiki-result");
+            div.innerHTML = "🔁 Refreshing...";
+            setTimeout(searchWiki, 500);
+        }
+
+        window.onload = searchWiki;
+    </script>
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Vector Divergence and Curl</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f4f4f4;
+        }
+        h1, h2, h3 { color: #333; }
+        form {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.12);
+        }
+        label { font-weight: bold; display:block; margin-top:8px; }
+        input[type=text] {
+            width: 100%;
+            padding: 8px;
+            margin-top: 4px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+        .row { display:flex; gap:10px; }
+        .row .col { flex:1; }
+        button {
+            margin-top: 10px;
+            padding: 10px 15px;
+            background: #007BFF;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+        .card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.12);
+            margin-bottom: 15px;
+        }
+        .note {
+            background: #e9f5ff;
+            border-left: 4px solid #007BFF;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        pre {
+            background: #fbfbfb;
+            padding: 10px;
+            border-radius: 6px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .small {
+            font-size: 0.9em;
+            color: #555;
+        }
+        .result-image {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Vector Divergence and Curl</h1>
+
+    <div class="note">
+        <p>
+            Divergence measures how a vector field spreads out from a point; curl measures rotation.
+            <strong>Input tip:</strong> you can use <code>x^2</code> (caret) — the app will accept it and convert to the correct Python/SymPy power operator.
+        </p>
+    </div>
+
+    <!-- ===== Simple Parameter Guide ===== -->
+    <div class="card" style="margin-bottom:20px;">
+        <h3>Parameter Guide (Quick)</h3>
+
+        <p><strong>Fx, Fy, Fz:</strong> Enter expressions using <code>x</code>, <code>y</code>, <code>z</code>.</p>
+        <ul style="margin-top:-5px;">
+            <li>Use <code>^</code> for powers (e.g., <code>x^2</code>, <code>y^2*z</code>).</li>
+            <li>You can use functions: <code>sin()</code>, <code>cos()</code>, <code>exp()</code>, <code>sqrt()</code>, etc.</li>
+            <li>Examples:  
+                <div><code>x^2 + y</code></div>
+                <div><code>-x*y</code></div>
+                <div><code>sin(x) + z^2</code></div>
+            </li>
+        </ul>
+
+        <p><strong>Point:</strong> Give comma-separated values <code>x,y,z</code>.  
+        If you give only <code>x,y</code>, then <code>z=0</code> is assumed.</p>
+        <div><code>1,2,3</code> → x=1, y=2, z=3</div>
+        <div><code>1,2</code> → x=1, y=2, z=0</div>
+
+        <p><strong>Plot span:</strong> How far around the point to draw the quiver plot.  
+        Default is <code>2</code>. Increase it for a larger view.</p>
+
+        <p style="margin-top:10px; font-size:0.9em; color:#666;">
+            That’s it — enter your field and point, hit submit!
+        </p>
+    </div>
+
+
+    <form method="POST" id="emft-form" novalidate>
+        <label>F<sub>x</sub>(x,y,z): </label>
+        <input type="text" name="Fx" id="Fx" value="y^2*z" placeholder="e.g. x^2 + y*z">
+
+        <label>F<sub>y</sub>(x,y,z): </label>
+        <input type="text" name="Fy" id="Fy" value="-x*y" placeholder="e.g. -y + x*z">
+
+        <label>F<sub>z</sub>(x,y,z): </label>
+        <input type="text" name="Fz" id="Fz" value="z^2" placeholder="e.g. x*y">
+
+        <div class="row">
+            <div class="col">
+                <label>Point (comma separated): </label>
+                <input type="text" name="point" id="point" value="1,2,3" placeholder="e.g. 1,0,0 or 1,2">
+                <div class="small">If you omit z (enter "1,2") z defaults to 0.</div>
+            </div>
+
+            <div class="col">
+                <label>Plot span (distance around point): </label>
+                <input type="text" name="span" id="span" value="2" placeholder="e.g. 2">
+                <div class="small">Controls grid extent for the quiver plot (default = 2).</div>
+            </div>
+        </div>
+
+        <button type="submit">Compute & Plot</button>
+    </form>
+
+    <div class="card">
+        <h2>Results:</h2>
+        <div id="results-block">
+            {% if result %}
+                {{ result|safe }}
+            {% else %}
+                <em>No results yet. Submit the form to see results.</em>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- === GPT / Wikipedia Assistant === -->
+    <div class="assistant-container card">
+        <h3>🧠 Wikipedia Assistant</h3>
+        <p style="color:#555;">
+            Explore more about <strong>divergence and curl of a field</strong>.
+            This section fetches the top 2 most relevant Wikipedia summaries for your query.
+        </p>
+
+        <textarea id="wiki-query" rows="3" style="width:100%;">divergence and curl</textarea><br>
+        <button onclick="searchWiki()">Search Wikipedia</button>
+
+        <div id="wiki-result" style="margin-top:12px;">⏳ Loading Wikipedia data...</div>
+        <button id="refresh-btn" onclick="refreshWiki()" 
+            style="margin-top:12px;padding:8px 16px;background:#17a2b8;color:white;
+                   border:none;border-radius:6px;cursor:pointer;font-size:15px;">
+            🔄 Refresh Content
+        </button>
+    </div>
+
+    <script>
+    /* Optional: client-side conversion of ^ -> ** so users see canonical SymPy text in preview if you ever add a JS preview.
+       Backend already converts ^ -> **, so this is just a UX nicety that keeps what the server expects available.
+       We keep form values as the user typed (x^2) — the server will perform the conversion.
+    */
+    (function() {
+        const form = document.getElementById('emft-form');
+
+        // If you'd ever submit via AJAX and want the converted string, you could do it here.
+        // For normal form submit we'll leave the user input untouched (server handles ^ -> **).
+        form.addEventListener('submit', function (ev) {
+            // nothing required here; keeping as a safe hook if you later add client-side validation
+        });
+    })();
+
+    // ---------- Wikipedia widget ----------
+    async function searchWiki() {
+        const query = document.getElementById("wiki-query").value.trim();
+        const resultDiv = document.getElementById("wiki-result");
+        resultDiv.innerHTML = "⏳ Fetching information from Wikipedia...";
+
+        try {
+            const response = await fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=2&prop=extracts&exintro=true&explaintext=true`);
+            const data = await response.json();
+
+            if (data.query && data.query.pages) {
+                const pages = Object.values(data.query.pages).sort((a,b)=> a.index - b.index);
+                resultDiv.innerHTML = "";
+
+                pages.forEach(page => {
+                    const title = page.title;
+                    const extract = (page.extract || "").split(". ").slice(0, 4).join(". ").replace(/\n/g,' ') + ".";
+                    const url = "https://en.wikipedia.org/?curid=" + page.pageid;
+
+                    const block = document.createElement('div');
+                    block.innerHTML = `
+                        <h4 style="margin-bottom:6px">${title}</h4>
+                        <p style="margin-top:0">${extract}</p>
+                        <a href="${url}" target="_blank">🔗 Read full article</a>
+                        <hr>
+                    `;
+                    resultDiv.appendChild(block);
+                });
+            } else {
+                resultDiv.innerHTML = "❌ No Wikipedia data found for this query.";
+            }
+        } catch (error) {
+            resultDiv.innerHTML = "⚠️ Error fetching Wikipedia content.";
+        }
+    }
+
+    function refreshWiki() {
+        const resultDiv = document.getElementById("wiki-result");
+        resultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+        resultDiv.innerHTML = "🔁 Refreshing Wikipedia content...";
+        setTimeout(searchWiki, 600);
+    }
+
+    window.onload = function() {
+        // Trigger initial wiki fetch
+        searchWiki();
+
+        // If server returned results that contain MathJax-markup, re-typeset:
+        if (window.MathJax && window.MathJax.typesetPromise) {
+            // small timeout to ensure DOM is fully rendered
+            setTimeout(()=> {
+                try { MathJax.typesetPromise(); } catch(e){ /* ignore */ }
+            }, 50);
+        }
+    };
+    </script>
+
+</body>
+</html>

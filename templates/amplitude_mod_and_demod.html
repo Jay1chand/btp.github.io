@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Amplitude Modulation and Demodulation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .form-container, .plot-container, .parameter-guide, .assistant-container {
+            width: 90%;
+            max-width: 900px;
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+        h1, h2, h3 { margin-top: 0; color: #222; }
+        .description {
+            background: #eef6ff;
+            padding: 14px;
+            border-left: 5px solid #007bff;
+            border-radius: 6px;
+            line-height: 1.6;
+        }
+        form {
+            display: block;
+            max-width: 700px;
+            margin-top: 12px;
+        }
+        label {
+            display: block;
+            margin-top: 12px;
+            font-weight: bold;
+        }
+        input[type="number"], input[type="text"], select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 6px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 15px;
+        }
+        .small-note { font-size: 0.9em; color: #555; margin-top:6px; }
+        button, input[type="submit"] {
+            margin-top: 16px;
+            padding: 10px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-primary:hover { background: #0056b3; }
+        .btn-secondary { background: #17a2b8; color: white; }
+        .btn-secondary:hover { background: #117a8b; }
+        .error { color: #b00020; margin-top: 12px; }
+        .param-grid { display: grid; grid-template-columns: 1fr 3fr; gap: 10px 20px; align-items: start; }
+        .param-grid dt { font-weight: bold; color: #222; }
+        .param-grid dd { margin: 0; color: #444; }
+        #wiki-result { border: 1px solid #e3e3e3; padding: 14px; border-radius: 8px; background: #fafafa; margin-top: 12px; min-height: 120px; }
+        hr.small { border: 0; border-top: 1px solid #eee; margin: 12px 0; }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>Amplitude Modulation and Demodulation</h1>
+        <p class="description">
+            Amplitude Modulation (AM) is a modulation technique where the amplitude of a high-frequency carrier wave 
+            is varied in proportion to the message (baseband) signal. In this simulation, you can visualize how the 
+            carrier and baseband signals interact to form the AM signal, and also see how demodulation extracts the 
+            original message. Adjust the parameters below to experiment with different conditions.
+        </p>
+
+            <div class="parameter-guide">
+        <h2>📌 Parameter Guide</h2>
+        <dl class="param-grid">
+            <dt>Sampling Frequency (fs)</dt>
+            <dd>
+                The rate at which the continuous signal is sampled for digital processing.  
+                <strong>Typical Range:</strong> 1 MHz – 10 GHz (e.g., <code>4.096e9</code>)  
+                Should be at least twice the highest signal frequency (Nyquist).
+            </dd>
+
+            <dt>Baseband Frequency (fb)</dt>
+            <dd>
+                Frequency of the original low-frequency message signal.  
+                <strong>Typical Range:</strong> 100 kHz – 100 MHz (e.g., <code>64e6</code>)  
+                This determines how “fast” the modulating signal oscillates.
+            </dd>
+
+            <dt>Amplitude (A)</dt>
+            <dd>
+                Peak amplitude of the baseband message signal.  
+                <strong>Typical Range:</strong> 0.5 – 10 (unitless).  
+                Larger amplitude leads to deeper modulation.
+            </dd>
+
+            <dt>FFT Size (N_fft)</dt>
+            <dd>
+                Number of points used for the Fast Fourier Transform.  
+                <strong>Typical Range:</strong> 512 – 8192.  
+                Larger values give finer frequency resolution but increase computation time.
+            </dd>
+
+            <dt>Carrier Frequency (fc)</dt>
+            <dd>
+                Frequency of the high-frequency carrier used for modulation.  
+                <strong>Typical Range:</strong> 10 MHz – several GHz (e.g., <code>900e6</code>).  
+                Typically much larger than fb to clearly shift the spectrum.
+            </dd>
+        </dl>
+    </div>
+
+        <form method="POST">
+            <label>Modulation Type:</label>
+            <select name="mode">
+                <option value="DSBSC" {% if request.form.mode == "DSBSC" %}selected{% endif %}>DSB-SC (Suppressed Carrier)</option>
+                <option value="DSBAC" {% if request.form.mode == "DSBAC" %}selected{% endif %}>DSB-AC / AM (With Carrier)</option>
+                <option value="SSBSC" {% if request.form.mode == "SSBSC" %}selected{% endif %}>SSB-SC (Single Sideband - Suppressed)</option>
+                <option value="SSBAC" {% if request.form.mode == "SSBAC" %}selected{% endif %}>SSB-AC (Single Sideband + Carrier)</option>
+            </select>
+
+            <label>Modulation Index μ (for AM / SSB-AC):</label>
+            <input type="number" step="any" name="mu" value="{{ request.form.mu or 0.5 }}">
+
+            <label>SSB Side (USB / LSB):</label>
+            <select name="side">
+                <option value="USB" {% if request.form.side == "USB" %}selected{% endif %}>USB (Upper Sideband)</option>
+                <option value="LSB" {% if request.form.side == "LSB" %}selected{% endif %}>LSB (Lower Sideband)</option>
+            </select>
+
+            <label>Sampling Frequency (Hz):</label>
+            <input type="text" name="fs" value="{{ '{:.3e}'.format(request.form.fs|float if request.form.fs else 4.096e9) }}">
+
+            <label>Baseband Frequency (Hz):</label>
+            <input type="text" name="fb" value="{{ request.form.fb or '64e6' }}">
+
+            <label>Amplitude:</label>
+            <input type="number" step="any" name="A" value="{{ request.form.A or 2 }}">
+
+            <label>FFT Size:</label>
+            <input type="number" step="1" name="N_fft" value="{{ request.form.N_fft or 2048 }}">
+
+            <label>Carrier Frequency (Hz):</label>
+            <input type="text" name="fc" value="{{ request.form.fc or '900e6' }}">
+            
+            <input type="submit" value="Plot">
+        </form>
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+    </div>
+
+    <div class="plot-container">
+        {{ plot_html | safe }}
+    </div>
+
+    <!-- ✅ Parameter Description Section -->
+    <div class="parameter-guide">
+        <h2>📌 Parameter Guide</h2>
+        <dl class="param-grid">
+            <dt>Sampling Frequency (fs)</dt>
+            <dd>
+                The rate at which the continuous signal is sampled for digital processing.  
+                <strong>Typical Range:</strong> 1 MHz – 10 GHz (e.g., <code>4.096e9</code>)  
+                Should be at least twice the highest signal frequency (Nyquist).
+            </dd>
+
+            <dt>Baseband Frequency (fb)</dt>
+            <dd>
+                Frequency of the original low-frequency message signal.  
+                <strong>Typical Range:</strong> 100 kHz – 100 MHz (e.g., <code>64e6</code>)  
+                This determines how “fast” the modulating signal oscillates.
+            </dd>
+
+            <dt>Amplitude (A)</dt>
+            <dd>
+                Peak amplitude of the baseband message signal.  
+                <strong>Typical Range:</strong> 0.5 – 10 (unitless).  
+                Larger amplitude leads to deeper modulation.
+            </dd>
+
+            <dt>FFT Size (N_fft)</dt>
+            <dd>
+                Number of points used for the Fast Fourier Transform.  
+                <strong>Typical Range:</strong> 512 – 8192.  
+                Larger values give finer frequency resolution but increase computation time.
+            </dd>
+
+            <dt>Carrier Frequency (fc)</dt>
+            <dd>
+                Frequency of the high-frequency carrier used for modulation.  
+                <strong>Typical Range:</strong> 10 MHz – several GHz (e.g., <code>900e6</code>).  
+                Typically much larger than fb to clearly shift the spectrum.
+            </dd>
+        </dl>
+    </div>
+
+    <!-- 🔍 Search Assistant -->
+     <div class="assistant-container">
+        <h3>🧠 Wikipedia Assistant</h3>
+        <p style="color:#555;">
+            Learn about <strong>Amplitude Modulation and Demodulation</strong>, sampling theory, quantization, and practical considerations.
+            Top two relevant Wikipedia summaries are auto-loaded below — click the link to open the full article.
+        </p>
+
+        <textarea id="wiki-query" rows="3" style="width:100%;">Amplitude Modulation</textarea><br>
+        <button type="button" onclick="searchWiki()" class="btn-primary">Search Wikipedia</button>
+        <button type="button" onclick="refreshWiki()" class="btn-secondary" style="margin-left:8px;">🔄 Refresh Content</button>
+
+        <div id="wiki-result">⏳ Loading Wikipedia data...</div>
+    </div>
+
+    <script>
+    async function searchWiki() {
+        const query = document.getElementById("wiki-query").value.trim();
+        const resultDiv = document.getElementById("wiki-result");
+        if (!query) { resultDiv.innerHTML = "❌ Enter a search query."; return; }
+        resultDiv.innerHTML = "⏳ Fetching information from Wikipedia...";
+
+        try {
+            const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=2&prop=extracts&exintro=true&explaintext=true`;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (!data.query || !data.query.pages) {
+                resultDiv.innerHTML = "❌ No Wikipedia data found for this query.";
+                return;
+            }
+
+            const pages = Object.values(data.query.pages).sort((a,b) => (a.index||0)-(b.index||0));
+            let html = "";
+            for (const page of pages) {
+                const title = page.title;
+                const extract = page.extract ? page.extract.split(/(?<=\.)\s+/).slice(0, 4).join(' ') : "(No summary available)";
+                const urlPage = "https://en.wikipedia.org/?curid=" + page.pageid;
+
+                html += `
+                    <div style="margin-bottom:14px;">
+                        <h4 style="margin:6px 0 8px 0;color:#0066cc;">${title}</h4>
+                        <p style="line-height:1.6;margin:0 0 8px 0;color:#333;">${extract}</p>
+                        <a href="${urlPage}" target="_blank" rel="noopener noreferrer">🔗 Read full article</a>
+                    </div>
+                    <hr class="small">
+                `;
+            }
+
+            html += `<p style="text-align:center;color:#666;margin-top:8px;">— End of summary —</p>`;
+            resultDiv.innerHTML = html;
+        } catch (err) {
+            console.error(err);
+            resultDiv.innerHTML = "⚠️ Error fetching Wikipedia content.";
+        }
+    }
+
+    function refreshWiki() {
+        const resultDiv = document.getElementById("wiki-result");
+        resultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+        resultDiv.innerHTML = "🔁 Refreshing Wikipedia content...";
+        setTimeout(searchWiki, 600);
+    }
+
+    window.onload = function() { searchWiki(); };
+    </script>
+</body>
+</html>

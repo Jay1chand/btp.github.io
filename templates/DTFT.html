@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DTFT Calculator</title>
+
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async
+            src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+    </script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+            background: #f3f3f3;
+        }
+
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px #cccccc;
+            max-width: 900px;
+            margin: auto;
+        }
+
+        textarea {
+            width: 100%;
+            height: 50px;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        button:hover {
+            background: #004999;
+        }
+
+        .result-block {
+            background: #fafafa;
+            border-left: 4px solid #0077dd;
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+
+        .error {
+            background: #ffdddd;
+            padding: 10px;
+            border-left: 4px solid red;
+            white-space: pre;
+        }
+
+        .examples-box {
+            margin-top: 20px;
+            background: #eee;
+            padding: 12px;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <h1>Discrete-Time Fourier Transform (DTFT)</h1>
+    <p>Enter a discrete-time signal \(x[n]\) or frequency expression \(X(\omega)\).</p>
+
+    <form method="POST">
+
+        <label><strong>Signal Expression</strong></label><br>
+        <textarea name="signal_expr" placeholder="e.g., u(n), 0.9**n * u(n), cos(0.5*pi*n) * u(n)">{{ request.form.signal_expr }}</textarea>
+
+        <br><br>
+
+        <button type="submit" name="operation" value="dtft">Compute DTFT</button>
+        <button type="submit" name="operation" value="idtft">Compute IDTFT</button>
+    </form>
+
+    <br>
+
+    {% if error %}
+        <div class="error">
+            <strong>Error:</strong><br>{{ error }}
+        </div>
+    {% endif %}
+
+    {% if results %}
+        <h2>Results</h2>
+        {% for r in results %}
+            <div class="result-block">
+                <strong>{{ r.description }}</strong><br>
+                <p><code>{{ r.expr }}</code></p>
+                <p>LaTeX:</p>
+                <p>\\( {{ r.latex }} \\)</p>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="examples-box">
+        <h3>Examples</h3>
+
+        <strong>DTFT examples:</strong>
+        <ul>
+            {% for ex in examples.dtft_examples %}
+                <li><code>{{ ex }}</code></li>
+            {% endfor %}
+        </ul>
+
+        <strong>IDTFT examples:</strong>
+        <ul>
+            {% for ex in examples.idtft_examples %}
+                <li><code>{{ ex }}</code></li>
+            {% endfor %}
+        </ul>
+    </div>
+
+</div>
+</body>
+</html>

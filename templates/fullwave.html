@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Full-Wave Rectifier Simulation</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f4f4f4; }
+        h1, h2 { color: #333; }
+        form { background: white; padding: 15px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        input[type=text] { width: 100%; padding: 8px; margin: 5px 0; }
+        button { margin-top: 10px; padding: 10px 15px; background: #007BFF; border: none; color: white; border-radius: 6px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); margin-bottom: 15px; text-align:center; }
+        img { max-width: 100%; height: auto; }
+    </style>
+</head>
+<body>
+    <h1>Full-Wave Rectifier Simulation</h1>
+
+    <form method="POST">
+        <label>AC Voltage Amplitude Vin (V):</label>
+        <input type="text" name="Vin" value="10">
+        <label>Diode Forward Voltage Vk (V):</label>
+        <input type="text" name="Vk" value="0.7">
+        <label>Load Resistor Rl (Ohms):</label>
+        <input type="text" name="Rl" value="5">
+        <button type="submit">Simulate</button>
+    </form>
+
+    {% if plot_url %}
+    <div class="card">
+        <h2>Simulation Result</h2>
+        <img src="data:image/png;base64,{{ plot_url }}">
+    </div>
+    {% endif %}
+    {% include "chatgpt_widget.html" %}
+</body>
+</html>

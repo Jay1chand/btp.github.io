@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Netlist Viewer</title>
+  <style>
+    :root { --brand:#0d6efd; --muted:#eef3ff; }
+    body { font-family: system-ui, Arial, sans-serif; background:#f4f6fb; margin:0; padding:24px; display:flex; justify-content:center; }
+    .container { background:#fff; width: 1000px; max-width: 95vw; border-radius:12px; box-shadow:0 10px 24px rgba(0,0,0,.06); padding:24px; }
+    h1 { margin:0 0 8px; }
+    .sub { color:#666; margin:0 0 16px; }
+    .row { display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; }
+    .card { flex:1; min-width: 280px; background:#fff; border:1px solid #e9ecf3; border-radius:10px; padding:16px; }
+    .upload { background: var(--muted); border:1px dashed var(--brand); }
+    input[type=file] { display:block; margin:10px 0 12px; }
+    button, .btn { background: var(--brand); border:none; color:#fff; padding:8px 12px; border-radius:8px; cursor:pointer; text-decoration:none; display:inline-block; font-size:14px; }
+    button:hover, .btn:hover { filter: brightness(0.93); }
+    table { width:100%; border-collapse: collapse; }
+    th, td { text-align:left; padding:10px; border-bottom:1px solid #eef1f6; vertical-align: top; }
+    th { background:#f8fafc; }
+    .plot-box { background:#fafafa; border:1px solid #e9ecf3; border-radius:10px; padding:12px; text-align:center; }
+    .plot-box img { max-width:100%; border-radius:8px; border:1px solid #e5e9f2; }
+    .meta { color:#444; font-size:14px; }
+    .flash { padding:10px 12px; border-radius:8px; margin:8px 0; }
+    .flash.error { background:#ffe6e6; border:1px solid #ffb3b3; }
+    .flash.success { background:#e7f7ea; border:1px solid #b9ebc4; }
+    .flash.warning { background:#fff7e6; border:1px solid #ffe0a6; }
+    code { background:#f2f4f8; padding:2px 6px; border-radius:6px; }
+    .btn-row { display:flex; gap:8px; flex-wrap:wrap; }
+    .two-col { display:grid; grid-template-columns: 1fr 1fr; gap:20px; }
+    .table-scroll { max-height: 260px; overflow:auto; }
+    .kv { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Netlist Viewer</h1>
+    <p class="sub">Upload a SPICE-like netlist, list components, plot curves, draw schematic, and solve DC OP.</p>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message|safe }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="row">
+      <!-- Upload -->
+      <div class="card upload" style="flex:1">
+        <h3>Upload Netlist</h3>
+        <form method="post" enctype="multipart/form-data" action="{{ url_for('netlist_home') }}">
+          <input type="file" name="netlist" accept=".cir,.sp,.txt" />
+          <button type="submit">Parse</button>
+        </form>
+        {% if file_token %}
+          <p class="meta">Last file: <code>{{ file_token }}</code></p>
+        {% endif %}
+        <div class="btn-row" style="margin-top:10px">
+          <a class="btn" href="{{ url_for('netlist_schematic') }}">🧭 Draw Schematic</a>
+          <a class="btn" href="{{ url_for('netlist_dc') }}">⚡ Solve DC OP</a>
+        </div>
+      </div>
+
+      <!-- Components -->
+      <div class="card" style="flex:2">
+        <h3>Components ({{ components|length }})</h3>
+        {% if components %}
+          <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Ref</th>
+                <th>Type</th>
+                <th>Params</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in components %}
+                <tr>
+                  <td>{{ loop.index0 }}</td>
+                  <td>{{ c.name }}</td>
+                  <td>{{ c.ctype }}</td>
+                  <td class="kv">
+                    {% if c.ctype in ["R","C","L","V","I"] %}
+                      {{ c.value }} {{ "Ω" if c.ctype=="R" else ("F" if c.ctype=="C" else ("H" if c.ctype=="L" else ("V" if c.ctype=="V" else "A"))) }}
+                    {% elif c.ctype == "D" %}
+                      Is={{ '{:.2e}'.format(c.Is) }}, n={{ c.n }}
+                    {% elif c.ctype in ["M","Q"] %}
+                      {{ c.model }} {% if c.ctype=="M" %}(Vth={{ c.Vth }}, k={{ c.k }}, λ={{ c.lmbda }}){% else %}(Is={{ '{:.2e}'.format(c.Is) }}, β={{ c.beta }}, V_A={{ c.VA }}){% endif %}
+                    {% else %}
+                      —
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div class="btn-row">
+                      {% if c.plot_iv is defined %}
+                        <a class="btn" href="{{ url_for('netlist_plot', idx=loop.index0) }}">Plot I–V</a>
+                      {% endif %}
+                      {% if c.ctype in ["C","L"] %}
+                        <a class="btn" href="{{ url_for('netlist_plot_ac', idx=loop.index0) }}">Plot |Z| vs f</a>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          </div>
+        {% else %}
+          <p>No components yet. Upload a netlist to begin.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="two-col" style="margin-top:20px;">
+      <div class="card">
+        <h3>Plot</h3>
+        {% if selected %}
+          <p class="meta">Selected: <strong>{{ selected }}</strong></p>
+        {% endif %}
+        <div class="plot-box">
+          {% if plot_image %}
+            <img src="{{ url_for('static', filename=plot_image) }}" alt="Plot" />
+          {% else %}
+            <em>No plot yet. Use buttons in the table.</em>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>DC Operating Point</h3>
+        {% if dc_solution %}
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Node</th><th>V (V)</th></tr></thead>
+              <tbody>
+                {% for node, val in dc_solution.items() %}
+                  <tr><td>{{ node }}</td><td>{{ '%.6g'|format(val) }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="meta">Click <strong>⚡ Solve DC OP</strong> to compute node voltages (R + DC V sources).</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Schematic -->
+    <div class="card" style="margin-top:20px;">
+      <h3>Schematic</h3>
+      <div class="plot-box">
+        {% if schematic_image %}
+          <img src="{{ url_for('static', filename=schematic_image) }}" alt="Schematic" />
+        {% else %}
+          <em>No schematic yet. Click “🧭 Draw Schematic”.</em>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</body>
+</html>

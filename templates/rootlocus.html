@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Root Locus Explorer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; display:flex; flex-direction:column; align-items:center; }
+        .container { width:90%; max-width:1000px; background:white; padding:20px; margin:20px 0; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.06); }
+        h1 { margin-top:0; color:#222; }
+        label { display:block; margin-top:12px; font-weight:bold; }
+        input[type="text"], input[type="number"], textarea { width:100%; padding:8px; margin-top:6px; border-radius:6px; border:1px solid #ccc; font-size:15px; }
+        .row { display:flex; gap:12px; }
+        .col { flex:1; }
+        .btn { margin-top:12px; padding:10px 14px; border-radius:6px; border:none; cursor:pointer; font-size:15px; }
+        .btn-primary { background:#007bff; color:white; }
+        .error { color:#b00020; margin-top:12px; }
+        .plot-container { margin-top:16px; }
+        .hint { font-size:0.9em; color:#555; margin-top:6px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Root Locus Explorer</h1>
+        <p class="hint">
+            Enter open-loop transfer function coefficients (highest-power-first). Example: numerator "1 0" for s, denominator "1 3 2" for s^2+3s+2.
+            K is swept from K_min to K_max to draw the root locus for unity-feedback: closed-loop denominator = D(s) + K N(s).
+        </p>
+
+        <form method="POST">
+            <label>Numerator coefficients (N(s)) — highest power first (space or comma separated):</label>
+            <input type="text" name="num" value="{{ form_defaults.num }}">
+
+            <label>Denominator coefficients (D(s)) — highest power first (space or comma separated):</label>
+            <input type="text" name="den" value="{{ form_defaults.den }}">
+
+            <div class="row">
+                <div class="col">
+                    <label>K min:</label>
+                    <input type="number" step="any" name="K_min" value="{{ form_defaults.K_min }}">
+                </div>
+                <div class="col">
+                    <label>K max:</label>
+                    <input type="number" step="any" name="K_max" value="{{ form_defaults.K_max }}">
+                </div>
+                <div class="col">
+                    <label>Points in sweep:</label>
+                    <input type="number" step="1" name="K_steps" value="{{ form_defaults.K_steps }}">
+                </div>
+            </div>
+
+            <label>Selected K for closed-loop poles & step response (K_view):</label>
+            <input type="number" step="any" name="K_view" value="{{ form_defaults.K_view }}">
+
+            <input type="submit" class="btn btn-primary" value="Plot Root Locus">
+        </form>        
+
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+
+        <div class="plot-container">
+            {{ plot_html | safe }}
+        </div>
+        <div class="routh-container">
+            {{ routh_html | safe }}
+        </div>
+
+        <hr style="margin-top:18px;border:0;border-top:1px solid #eee;">
+        <p class="hint">Notes: This uses unity-feedback conventions. For non-unity feedback or different loop formulations adapt numerator/denominator accordingly.</p>
+    </div>
+    <!-- === GPT Widget === -->
+      <div class="assistant-container">
+        <h3>🧠 Wikipedia Assistant</h3>
+        <p style="color:#555;">
+            Explore more about <strong>Root locus method, Routh array</strong>.  
+            This section automatically fetches the top 2 most relevant Wikipedia summaries for your query.
+        </p>
+
+        <textarea id="wiki-query" rows="3" style="width:100%;">Root locus method, Routh array </textarea><br>
+        <button onclick="searchWiki()">Search Wikipedia</button>
+
+        <div id="wiki-result">⏳ Loading Wikipedia data...</div>
+        <button id="refresh-btn" onclick="refreshWiki()" 
+            style="margin-top:12px;padding:8px 16px;background:#17a2b8;color:white;
+                   border:none;border-radius:6px;cursor:pointer;font-size:15px;">
+            🔄 Refresh Content
+        </button>
+    </div>
+
+    <script>
+    async function searchWiki() {
+        const query = document.getElementById("wiki-query").value.trim();
+        const resultDiv = document.getElementById("wiki-result");
+        resultDiv.innerHTML = "⏳ Fetching information from Wikipedia...";
+
+        try {
+            const response = await fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=2&prop=extracts&exintro=true&explaintext=true`);
+            const data = await response.json();
+
+            if (data.query && data.query.pages) {
+                const pages = Object.values(data.query.pages);
+                resultDiv.innerHTML = "";
+
+                pages.forEach(page => {
+                    const title = page.title;
+                    const extract = page.extract.split(". ").slice(0, 4).join(". ") + ".";
+                    const url = "https://en.wikipedia.org/?curid=" + page.pageid;
+
+                    resultDiv.innerHTML += `
+                        <h4>${title}</h4>
+                        <p>${extract}</p>
+                        <a href="${url}" target="_blank">🔗 Read full article</a>
+                        <hr>
+                    `;
+                });
+            } else {
+                resultDiv.innerHTML = "❌ No Wikipedia data found for this query.";
+            }
+        } catch (error) {
+            resultDiv.innerHTML = "⚠️ Error fetching Wikipedia content.";
+        }
+    }
+
+    function refreshWiki() {
+        const resultDiv = document.getElementById("wiki-result");
+        resultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+        resultDiv.innerHTML = "🔁 Refreshing Wikipedia content...";
+        setTimeout(searchWiki, 600);
+    }
+
+    window.onload = function() {
+        searchWiki();
+    };
+    </script>
+
+</body>
+</html>

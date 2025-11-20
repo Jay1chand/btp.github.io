@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Channel Coding Simulation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            background: #fff;
+            padding: 20px;
+            margin: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 80%;
+            max-width: 900px;
+        }
+        h1 {
+            text-align: center;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        input[type="text"], select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        input[type="checkbox"] {
+            margin-top: 10px;
+        }
+        button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            border: none;
+            background-color: #007BFF;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+        .result {
+            margin-top: 20px;
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        a.home {
+            display: inline-block;
+            margin-bottom: 15px;
+            text-decoration: none;
+            background: #28a745;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+        }
+        a.home:hover {
+            background: #1e7e34;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" style="max-width:700px;margin:30px auto;padding:20px;">
+        <h2 style="margin-bottom:15px;">DSP Analyzer</h2>
+
+        <!-- Short description / README -->
+        <p class="intro" style="line-height:1.6;margin-bottom:20px;">
+            This tool allows you to analyze Discrete-Time Systems. 
+            Enter input sequences and a system expression to test properties such as 
+            <b>linearity, time invariance, BIBO stability</b>, and compute both 
+            <b>linear and circular convolutions</b>. 
+            It is designed to help students and engineers quickly check DSP concepts in practice.
+        </p>
+
+        <!-- Parameter Guide -->
+        <div class="parameter-guide" style="margin-bottom:25px;">
+            <h3 style="margin-bottom:10px;">📌 Parameter Guide</h3>
+            <dl style="line-height:1.6;">
+                <dt>x[n]</dt>
+                <dd>First input sequence. Space-separated numbers. Example: 1 2 3</dd>
+                
+                <dt>y[n]</dt>
+                <dd>Second input sequence for convolution. Example: 4 5 6</dd>
+                
+                <dt>System Expression</dt>
+                <dd>Expression for the system in terms of x[n]. Example: 2*x + 3</dd>
+            </dl>
+        </div>
+
+        <!-- Input Form -->
+        <div class="form-container" style="margin-bottom:25px;">
+            <form method="POST" aria-label="DSP Analysis Form">
+                <label for="x_seq" style="display:block;margin-top:10px;">Enter first sequence (x[n]):</label>
+                <input type="text" id="x_seq" name="x_seq" aria-label="First sequence x of n"
+                       placeholder="Example: 1 2 3" 
+                       value="{{ request.form.get('x_seq','') }}" 
+                       style="width:100%;max-width:300px;padding:6px;margin-bottom:12px;">
+
+                <label for="y_seq" style="display:block;margin-top:10px;">Enter second sequence (y[n]):</label>
+                <input type="text" id="y_seq" name="y_seq" aria-label="Second sequence y of n"
+                       placeholder="Example: 4 5 6" 
+                       value="{{ request.form.get('y_seq','') }}" 
+                       style="width:100%;max-width:300px;padding:6px;margin-bottom:12px;">
+
+                <label for="system_expr" style="display:block;margin-top:10px;">Enter system expression (in x[n]):</label>
+                <input type="text" id="system_expr" name="system_expr" aria-label="System expression in x of n"
+                       placeholder="Example: 2*x + 3" 
+                       value="{{ request.form.get('system_expr','') }}" 
+                       style="width:100%;max-width:400px;padding:6px;margin-bottom:15px;">
+
+                <button type="submit" style="padding:8px 16px;">Analyze</button>
+            </form>
+        </div>
+
+        <!-- Results Section -->
+        {% if result %}
+        <div class="results" style="margin-bottom:20px;">
+            {% if result.error %}
+                <p class="error" style="color:red;"><b>❌ Error:</b> {{ result.error }}</p>
+            {% else %}
+                <div id="resultText" aria-live="polite" style="line-height:1.6;">
+                    <p><b>System:</b> {{ result.system_expr }}</p>
+                    <p><b>Linear Convolution:</b> {{ result.lin_conv }}</p>
+                    <p><b>Circular Convolution:</b> {{ result.circ_conv }}</p>
+                    <p><b>Linearity:</b> {{ result.linearity }}</p>
+                    <p><b>Time Invariance:</b> {{ result.time_invariance }}</p>
+                    <p><b>BIBO Stability:</b> {{ result.bibo }}</p>
+                </div>
+                <button onclick="speakResults()" style="margin-top:10px;">🔊 Speak Results</button>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Search Assistant -->
+<!-- 🔍 Wikipedia Search Assistant -->
+<!-- 🔍 Wikipedia Search Assistant -->
+<div class="assistant-container" style="margin-top:40px;">
+    <h3 style="margin-bottom:10px;">📘 Wikipedia Assistant</h3>
+    <p style="color:#555;line-height:1.8;margin-bottom:15px;">
+        Instantly explore detailed explanations from <b>Wikipedia</b> about DSP concepts 
+        like <b>linear systems</b>, <b>time invariance</b>, or <b>convolution</b>.  
+        A helpful default query is auto-loaded for convenience.
+    </p>
+
+    <!-- Search Input -->
+    <textarea id="wiki-query" rows="3" 
+        style="width:100%;padding:10px 12px;margin-bottom:12px;border-radius:6px;
+               border:1px solid #ccc;font-size:15px;resize:none;">
+Linear Time Invariant systems, Convolution
+    </textarea><br>
+
+    <button onclick="searchWiki()" 
+        style="padding:10px 20px;font-size:15px;border:none;border-radius:6px;
+               background-color:#007BFF;color:white;cursor:pointer;">
+        🔍 Search Wikipedia
+    </button>
+
+    <!-- Result Box -->
+    <div id="wiki-result" 
+        style="margin-top:20px;padding:15px 18px;background:#fafafa;
+               border-radius:8px;border:1px solid #ddd;line-height:1.7;
+               font-size:15px;color:#333;min-height:100px;">
+        ⏳ Loading default Wikipedia content...
+    </div>
+</div>
+
+<script>
+async function searchWiki() {
+    const query = document.getElementById("wiki-query").value.trim();
+    const resultDiv = document.getElementById("wiki-result");
+    resultDiv.innerHTML = "⏳ Searching Wikipedia...";
+
+    const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`;
+
+    try {
+        const searchRes = await fetch(searchUrl);
+        const data = await searchRes.json();
+
+        if (!data.query || data.query.search.length === 0) {
+            resultDiv.innerHTML = "❌ No results found on Wikipedia.";
+            return;
+        }
+
+        // Take top 2 most relevant pages
+        const topResults = data.query.search.slice(0, 2);
+
+        let html = `<h4 style="margin-top:0;font-size:18px;color:#007BFF;">
+            Wikipedia Overview: ${query}
+        </h4>`;
+
+        // For each top result, fetch detailed extract
+        for (const r of topResults) {
+            const title = r.title;
+            const pageUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(title)}`;
+            const extractUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&explaintext&titles=${encodeURIComponent(title)}&format=json&origin=*`;
+
+            try {
+                const extractRes = await fetch(extractUrl);
+                const extractData = await extractRes.json();
+                const pages = extractData.query.pages;
+                const extractText = Object.values(pages)[0].extract || "(No summary available)";
+                const shortText = extractText.split(/\.\s+/).slice(0, 5).join('. ') + '.'; // limit ~5 sentences
+
+                html += `
+                    <div style="margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid #eee;">
+                        <p style="margin:0;">
+                            <b style="color:#0066cc;font-size:17px;">${title}</b><br>
+                            <span style="line-height:1.6;color:#333;">${shortText}</span>
+                        </p>
+                        <a href="${pageUrl}" target="_blank"
+                           style="display:inline-block;margin-top:8px;color:#007BFF;text-decoration:none;font-weight:bold;">
+                           📖 Read full article →
+                        </a>
+                    </div>
+                `;
+            } catch {
+                html += `<p style="color:red;">⚠️ Failed to load extract for ${title}</p>`;
+            }
+        }
+
+        html += `<p style="text-align:center;color:#666;margin-top:15px;">— End of summary —</p>`;
+        resultDiv.innerHTML = html;
+
+    } catch (error) {
+        resultDiv.innerHTML = "❌ Couldn't fetch Wikipedia data.";
+    }
+}
+
+// Auto-load default query after short delay
+window.onload = () => {
+    setTimeout(searchWiki, 800);
+};
+</script>
+
+
+
+
+    </div>
+
+      <!-- 🗣️ TTS Script + Search Assistant Script -->
+    <script>
+    /**
+     * Convert the raw result text into a speech-friendly string.
+     */
+    function makeSpoken(text) {
+        if (!text) return '';
+
+        let s = String(text);
+
+        // Emojis/ticks => words
+        s = s.replace(/✅/g, ' yes').replace(/❌/g, ' no');
+
+        // Common dsp/math phrases
+        s = s.replace(/\bx\[n\]/gi, 'x of n');
+        s = s.replace(/\by\[n\]/gi, 'y of n');
+
+        // Replace common operators with words
+        s = s.replace(/\*/g, ' times ');
+        s = s.replace(/\^/g, ' to the power of ');
+        s = s.replace(/\//g, ' divided by ');
+
+        // Replace plus/minus but keep negative sign cases
+        s = s.replace(/\s*\+\s*/g, ' plus ');
+        s = s.replace(/\s*-\s*/g, ' minus ');
+
+        // Remove parentheses and brackets, but keep their content
+        s = s.replace(/[\[\]\(\)]/g, ' ');
+
+        // Convert colon separators to a small pause
+        s = s.replace(/:\s*/g, ': ');
+
+        // Ensure sequences like "1 2 3" become "1, 2, 3"
+        s = s.replace(/(\d)\s+(\d)/g, '$1, $2');
+
+        s = s.replace(/\s+/g, ' ').trim();
+        return s;
+    }
+
+    /**
+     * Speak the results text after sanitizing it.
+     */
+    function speakResults() {
+        const resultBox = document.getElementById("resultText");
+        if (!resultBox) {
+            const msgEmpty = new SpeechSynthesisUtterance("No results available to speak yet.");
+            msgEmpty.lang = 'en-US';
+            speechSynthesis.cancel();
+            speechSynthesis.speak(msgEmpty);
+            return;
+        }
+
+        const raw = resultBox.innerText || resultBox.textContent || '';
+        const spoken = makeSpoken(raw);
+        if (!spoken) return;
+
+        const msg = new SpeechSynthesisUtterance(spoken);
+        msg.lang = 'en-US';
+        msg.rate = 0.95;
+        msg.pitch = 1;
+        msg.volume = 1;
+
+        speechSynthesis.cancel();
+        speechSynthesis.speak(msg);
+    }
+
+    // Auto-load default query on page load
+    </script>
+</body>
+</html>
+
