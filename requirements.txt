@@ -1,0 +1,10 @@
+Flask
+gunicorn
+numpy
+matplotlib
+mpld3
+scipy
+control
+sympy
+lcapy
+opencv-python-headless
