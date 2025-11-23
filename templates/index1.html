@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Phasor & Waveform Analyzer</title>
+<title>Two-Port Analyzer</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
     body {
@@ -11,17 +11,14 @@
         margin: 0;
         padding: 20px;
     }
-
     h2 {
         text-align: center;
         color: #333;
     }
-
     .container {
         max-width: 900px;
         margin: auto;
     }
-
     .card {
         background: #fff;
         padding: 25px;
@@ -29,13 +26,11 @@
         border-radius: 10px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
-
     label {
         display: block;
         margin-top: 10px;
         font-weight: 600;
     }
-
     input, select {
         width: 100%;
         padding: 8px;
@@ -44,7 +39,6 @@
         border: 1px solid #ccc;
         box-sizing: border-box;
     }
-
     button {
         background-color: #007bff;
         color: white;
@@ -54,32 +48,26 @@
         cursor: pointer;
         margin-top: 15px;
     }
-
     button:hover {
         background-color: #005bbf;
     }
-
     .results table {
         width: 100%;
         border-collapse: collapse;
     }
-
     .results th, .results td {
         text-align: left;
         padding: 8px;
         border-bottom: 1px solid #ddd;
     }
-
     .results th {
         background-color: #007bff;
         color: white;
     }
-
     .plot {
         margin-top: 20px;
         text-align: center;
     }
-
     .error-box {
         background: #ffd4d4;
         color: #900;
@@ -87,7 +75,6 @@
         border-radius: 6px;
         margin-bottom: 15px;
     }
-
     @media (min-width: 600px) {
         .input-grid {
             display: flex;
@@ -102,66 +89,73 @@
 <body>
 
 <div class="container">
-    <h2>Phasor & Waveform Analyzer</h2>
+    <h2>Two-Port Analyzer</h2>
 
+    <!-- ---------------- PHASOR / WAVEFORM CARD ---------------- -->
+    <!-- ---------------- TWO-PORT NETWORK CARD ---------------- -->
     <div class="card">
-        <form method="POST">
-            <label>Mode:</label>
-            <select name="mode">
-                <option value="phasor">Phasor</option>
-                <option value="waveform">Waveform</option>
+        <h3>Two-Port Network Conversion</h3>
+        <form method="POST" action="/index1">
+
+            <label>Select Conversion:</label>
+            <select name="conversion">
+                <option>Z->Y</option>
+                <option>Z->ABCD</option>
+                <option>Z->h</option>
+                <option>Z->g</option>
+                <option>Z->S</option>
+                <option>Z->T</option>
+                <option>Y->Z</option>
+                <option>Y->ABCD</option>
+                <option>ABCD->Z</option>
+                <option>ABCD->h</option>
+                <option>h->Z</option>
+                <option>g->Z</option>
             </select>
 
             <div class="input-grid">
                 <div>
-                    <h3>Phasor Inputs</h3>
-                    <label>Magnitude</label>
-                    <input type="number" step="0.01" name="mag" placeholder="e.g. 10">
-                    <label>Angle (deg)</label>
-                    <input type="number" step="0.1" name="angle" placeholder="e.g. 30">
-                    <label>Frequency (Hz)</label>
-                    <input type="number" step="0.1" name="freq" placeholder="e.g. 50">
+                    <label>P11</label>
+                    <input type="text" name="p11" placeholder="e.g. 10">
+                    <label>P12</label>
+                    <input type="text" name="p12" placeholder="e.g. 2">
                 </div>
                 <div>
-                    <h3>Waveform Inputs</h3>
-                    <label>Amplitude (A)</label>
-                    <input type="number" step="0.01" name="A" placeholder="e.g. 5">
-                    <label>Omega (rad/s)</label>
-                    <input type="number" step="0.1" name="omega" placeholder="e.g. 314">
-                    <label>Phi (rad)</label>
-                    <input type="number" step="0.01" name="phi" placeholder="e.g. 0">
+                    <label>P21</label>
+                    <input type="text" name="p21" placeholder="e.g. 3">
+                    <label>P22</label>
+                    <input type="text" name="p22" placeholder="e.g. 5">
                 </div>
             </div>
 
-            <h3>Noise</h3>
-            <label>Noise Magnitude</label>
-            <input type="number" step="0.1" name="noise_val" placeholder="2">
-
-            <button type="submit">Calculate</button>
+            <button type="submit">Convert</button>
         </form>
     </div>
 
+
+
+    <!-- ---------------- ERROR OUTPUT ---------------- -->
     {% if error %}
     <div class="error-box">
         <strong>Error:</strong> {{ error }}
     </div>
     {% endif %}
 
+    <!-- ---------------- RESULT OUTPUT ---------------- -->
     {% if results %}
     <div class="card results">
         <h3>Results</h3>
         <table>
             <tbody>
                 {% for r in results %}
-                <tr>
-                    <td>{{ r }}</td>
-                </tr>
+                <tr><td>{{ r }}</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
     {% endif %}
 
+    <!-- ---------------- PLOT ---------------- -->
     {% if plot_html %}
     <div class="card plot">
         <h3>Plot</h3>
@@ -170,36 +164,32 @@
     {% endif %}
 
 </div>
-<!-- Wikipedia Assistant -->
+
+<!-- ---------------- WIKIPEDIA ASSISTANT (unchanged) ---------------- -->
 <div class="assistant-container">
     <h3>🧠 Wikipedia Assistant</h3>
-    <p>Learn about Signal representations.</p>
+    <p>Learn about Two port networks.</p>
 
-    <textarea id="wiki-query" rows="3" style="width:100%;"> Signals in waveforms and phasors   </textarea><br>
+    <textarea id="wiki-query" rows="3" style="width:100%;"> Two port networks </textarea><br>
     <button type="button" onclick="searchWiki()" class="btn-primary">Search Wikipedia</button>
     <button type="button" onclick="refreshWiki()" class="btn-secondary" style="margin-left:8px;">🔄 Refresh</button>
 
     <div id="wiki-result">⏳ Loading Wikipedia data...</div>
 </div>
 
-
 <script>
 async function searchWiki() {
     const q = document.getElementById("wiki-query").value.trim();
     const out = document.getElementById("wiki-result");
     if (!q) { out.innerHTML="❌ Enter a query."; return; }
-
     out.innerHTML="⏳ Fetching data...";
-
     try {
         const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${encodeURIComponent(q)}&gsrlimit=2&prop=extracts&exintro=true&explaintext=true`;
         const r = await fetch(url);
         const data = await r.json();
         if (!data.query) return out.innerHTML="❌ No results.";
-
         const pages = Object.values(data.query.pages).sort((a,b)=>a.index-b.index);
         let html="";
-
         for (const p of pages) {
             const desc = (p.extract||"").split(/(?<=\.)\s+/).slice(0,3).join(" ");
             html+=`
@@ -208,7 +198,6 @@ async function searchWiki() {
                 <a href="https://en.wikipedia.org/?curid=${p.pageid}" target="_blank">🔗 Read more</a>
                 <hr class="small">`;
         }
-
         out.innerHTML = html + `<p style="text-align:center;color:#666">— End —</p>`;
     } catch {
         out.innerHTML="⚠️ Error fetching Wikipedia content.";
@@ -217,5 +206,6 @@ async function searchWiki() {
 function refreshWiki(){ document.getElementById("wiki-result").innerHTML="🔁 Refreshing..."; setTimeout(searchWiki,600); }
 window.onload = searchWiki;
 </script>
+
 </body>
 </html>
