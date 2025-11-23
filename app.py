@@ -914,68 +914,88 @@ def delta_mod_and_demod():
                            plot_html=plot_html, error=error)
 ################################################################################
 @app.route('/pulse_width_mod_and_demod', methods=['GET', 'POST'])
-def pwm_mod_and_demod():
+def pulse_width_mod_and_demod():
     plot_html = ""
     error = None
 
     # Default parameters
     defaults = {
-        "fs": 5000,       # Sampling frequency (Hz)
-        "f_pwm": 50,      # PWM carrier frequency (Hz)
-        "duration": 0.05, # Signal duration (s)
-        "seed": 0         # Random seed for reproducibility
+        "fs": 20000,      # Sampling frequency (Hz)
+        "f_pwm": 500,     # PWM carrier frequency (Hz)
+        "f_mod": 5,       # Modulating wave frequency (Hz)
+        "duration": 0.05  # Duration (s)
     }
 
     try:
-        # Get inputs from form (or defaults)
+        # Get form values or defaults
         if request.method == 'POST':
             fs = int(request.form.get("fs", defaults["fs"]))
             f_pwm = float(request.form.get("f_pwm", defaults["f_pwm"]))
+            f_mod = float(request.form.get("f_mod", defaults["f_mod"]))
             duration = float(request.form.get("duration", defaults["duration"]))
-            seed = int(request.form.get("seed", defaults["seed"]))
         else:
-            fs, f_pwm, duration, seed = defaults.values()
+            fs, f_pwm, f_mod, duration = defaults.values()
 
         # Time vector
         t = np.linspace(0, duration, int(fs * duration), endpoint=False)
 
-        # Random waveform
-        np.random.seed(seed)
-        random_wave = np.random.rand(len(t))  
-        random_wave = np.convolve(random_wave, np.ones(50)/50, mode='same')  # smooth
+        # Modulating wave (sine) normalized 0→1
+        modulating_wave = 0.5 + 0.5 * np.sin(2 * np.pi * f_mod * t)
 
-        # Sawtooth carrier for PWM
-        carrier = (t * f_pwm) % 1  
+        # Sawtooth carrier wave 0→1
+        carrier_wave = (t * f_pwm) % 1
 
         # PWM output
-        pwm_output = (random_wave > carrier).astype(float)
+        pwm_output = (modulating_wave >= carrier_wave).astype(float)
 
         figs = []
 
-        # Plot 1: Random waveform + Carrier
+        # ------------------------------
+        # PLOT 1 — Carrier + Modulating
+        # ------------------------------
         fig, ax = plt.subplots(figsize=(8, 3))
-        ax.plot(t, random_wave, label='Random Waveform')
-        ax.plot(t, carrier, label='Carrier (Sawtooth)', alpha=0.7)
-        ax.set_title("Random Waveform vs Carrier")
+        ax.plot(t, carrier_wave, label='Carrier Wave')
+        ax.plot(t, modulating_wave, label='Modulating Wave')
+        ax.set_title("Carrier Wave and Modulating Wave")
         ax.legend()
-        ax.grid(True)
         figs.append(fig)
 
-        # Plot 2: PWM output
+        # ------------------------------
+        # PLOT 2 — PWM Output
+        # ------------------------------
         fig, ax = plt.subplots(figsize=(8, 3))
         ax.plot(t, pwm_output, drawstyle='steps-pre', label='PWM Output')
         ax.set_title("PWM Signal")
         ax.legend()
-        ax.grid(True)
         figs.append(fig)
 
-        # Plot 3: Overlay
+        # ------------------------------
+        # DEMODULATION (LPF)
+        # ------------------------------
+        cutoff = f_mod * 4   # LPF cutoff at 4× modulating freq
+        N = 201              # FIR filter order (odd number)
+
+        # Ideal sinc filter
+        n = np.arange(N) - (N - 1) / 2
+        h = np.sinc(2 * cutoff / fs * n)
+
+        # Blackman window for smooth filtering
+        h *= np.blackman(N)
+
+        # Normalize filter
+        h /= np.sum(h)
+
+        # Filter the PWM signal
+        demodulated = np.convolve(pwm_output, h, mode='same')
+
+        # ------------------------------
+        # PLOT 3 — Demodulated vs Modulating Wave
+        # ------------------------------
         fig, ax = plt.subplots(figsize=(8, 3))
-        ax.plot(t, random_wave, label='Random Waveform')
-        ax.plot(t, pwm_output, drawstyle='steps-pre', label='PWM Output')
-        ax.set_title("Overlay of Input and PWM")
+        ax.plot(t, modulating_wave, label="Original Modulating Wave")
+        ax.plot(t, demodulated, label="Demodulated Output", linewidth=2)
+        ax.set_title("PWM Demodulation (Low-Pass Filter)")
         ax.legend()
-        ax.grid(True)
         figs.append(fig)
 
         # Convert plots to HTML
@@ -985,7 +1005,9 @@ def pwm_mod_and_demod():
     except Exception as e:
         error = str(e)
 
-    return render_template("pulse_width_mod_and_demod.html", plot_html=plot_html, error=error)
+    return render_template("pulse_width_mod_and_demod.html",
+                           plot_html=plot_html, error=error)
+
 ##################################################################################################
 class Node:
     def __init__(self, char, freq):
@@ -1797,116 +1819,131 @@ def image_processing():
     
 
 
-# Simple phasor function using your original logic
-def phasor_value(magnitude=0, phase=0):
-    """Return complex phasor from magnitude and phase (degrees)"""
-    return magnitude * np.exp(1j * math.radians(phase))
+# required imports at top of your Flask app
+from flask import request, render_template
+from lcapy import TPZ, TPY, TPA, TPH, TPG, TPB  # lcapy two-port classes
+# Note: other conversions (S, T, etc.) are obtained from any TP instance via .Sparams, .Tparams, etc.
+import traceback
 
-# Dummy voltage function for compatibility
-def voltage(P):
-    """Return object with magnitude, phase, rms for display"""
-    class V:
-        def __init__(self, P):
-            self.magnitude = abs(P)
-            self.phase = np.angle(P)
-            self.rms = abs(P)/np.sqrt(2)
-    return V(P)
-
-# Dummy noise voltage generator
-class Noise:
-    _nid = 0
-    def __init__(self, val):
-        self.val = val
-        self.nid = Noise._nid
-        Noise._nid += 1
-    def __add__(self, other):
-        return Noise(self.val + other.val)
-    def __str__(self):
-        return str(self.val)
-
-def noisevoltage(val):
-    return Noise(val)
-
-# ===========================
-# /index1 route
-# ===========================
 @app.route("/index1", methods=["GET", "POST"])
 def index1():
     results = []
     plot_html = ""
     error = None
 
+    # mapping user keyword -> constructor name (Lcapy TP classes)
+    ctor_map = {
+        'z': TPZ,
+        'y': TPY,
+        'abcd': TPA,   # A-parameters (ABCD)
+        'a': TPA,
+        'h': TPH,
+        'g': TPG,
+        'b': TPB      # B-parameters (inverse ABCD)
+    }
+
+    # mapping normalized "to" keyword -> attribute name on the two-port instance
+    to_attr_map = {
+        'z': "Zparams",
+        'y': "Yparams",
+        'abcd': "Aparams",
+        'a': "Aparams",
+        'h': "Hparams",
+        'g': "Gparams",
+        'b': "Bparams",
+        's': "Sparams",
+        't': "Tparams"
+    }
+
     if request.method == "POST":
         try:
-            mode = (request.form.get("mode") or "phasor").lower()
+            conv = (request.form.get("conversion") or "Z->Y").strip()
+            # expect format like "Z->Y" or "z->abcd" (case-insensitive)
+            if '->' not in conv:
+                raise ValueError("Conversion must be of form FROM->TO (e.g. Z->Y).")
 
-            # ---- PHASOR MODE ----
-            if mode == "phasor":
-                mag = float(request.form.get("mag", 0))
-                angle = float(request.form.get("angle", 0))
-                freq = float(request.form.get("freq", 50))
+            frm_raw, to_raw = [x.strip().lower() for x in conv.split('->', 1)]
+            frm = frm_raw
+            to = to_raw
 
-                P = phasor_value(magnitude=mag, phase=angle)
-                V = voltage(P)
+            # read matrix entries (defaults to identity-like values)
+            p11 = request.form.get("p11", "1")
+            p12 = request.form.get("p12", "0")
+            p21 = request.form.get("p21", "0")
+            p22 = request.form.get("p22", "1")
 
-                results.append(f"Mode: PHASOR")
-                results.append(f"Input: {mag} ∠ {angle}° @ {freq} Hz")
-                results.append(f"Magnitude: {V.magnitude}")
-                results.append(f"Phase (rad): {V.phase}")
-                results.append(f"RMS: {V.rms}")
+            # convert numeric strings to sympy/lcapy-friendly expressions:
+            # lcapy can accept sympy expressions or plain floats; we'll try eval-safe conversion
+            # (using float if possible, otherwise pass as string for symbolic)
+            def parse_entry(s):
+                s = s.strip()
+                try:
+                    return float(s)
+                except Exception:
+                    # fallback to raw string so lcapy can handle symbolic names like "R1"
+                    return s
 
-                # ---- PLOT ----
-                t = np.linspace(0, 0.04, 1000)
-                y = mag * np.cos(2*np.pi*freq*t + math.radians(angle))
-                plt.figure()
-                plt.plot(t, y)
-                plt.title(f"Phasor: {mag}∠{angle}° at {freq}Hz")
-                plt.xlabel("Time (s)")
-                plt.ylabel("Amplitude")
-                plot_html = mpld3.fig_to_html(plt.gcf())
-                plt.close()
+            p11 = parse_entry(p11)
+            p12 = parse_entry(p12)
+            p21 = parse_entry(p21)
+            p22 = parse_entry(p22)
 
-            # ---- WAVEFORM MODE ----
-            elif mode == "waveform":
-                A = float(request.form.get("A", 5))
-                w = float(request.form.get("omega", 314))
-                phi = float(request.form.get("phi", 0))
+            # ensure input "from" is supported (use a TP constructor)
+            if frm not in ctor_map:
+                raise ValueError(f"Unsupported input parameter set '{frm}'. Supported inputs: {', '.join(sorted(ctor_map.keys()))}.")
 
-                P = phasor_value(magnitude=A, phase=math.degrees(phi))
-                V = voltage(P)
+            # create two-port from input parameters
+            TP_ctor = ctor_map[frm]
+            # instantiate: TPctor(p11, p12, p21, p22)
+            tp = TP_ctor(p11, p12, p21, p22)
 
-                results.append(f"Mode: WAVEFORM")
-                results.append(f"Amplitude: {A}")
-                results.append(f"Phase (rad): {phi}")
-                results.append(f"Magnitude: {V.magnitude}")
-                results.append(f"RMS: {V.rms}")
-                results.append(f"Omega: {w}")
+            # target attribute name (e.g. 'Yparams', 'Aparams', 'Hparams', 'Sparams', ...)
+            if to not in to_attr_map:
+                raise ValueError(f"Unsupported target parameter set '{to}'. Supported outputs: {', '.join(sorted(to_attr_map.keys()))}.")
 
-                t = np.linspace(0, 0.04, 1000)
-                y = A * np.cos(w * t + phi)
-                plt.figure()
-                plt.plot(t, y)
-                plt.title("Time Domain Waveform")
-                plt.xlabel("Time (s)")
-                plt.ylabel("Amplitude")
-                plot_html = mpld3.fig_to_html(plt.gcf())
-                plt.close()
+            attr_name = to_attr_map[to]
 
-            else:
-                raise ValueError("Invalid mode. Use 'phasor' or 'waveform'.")
+            if not hasattr(tp, attr_name):
+                # defensive: some very exotic conversions may not exist for some networks
+                raise ValueError(f"Conversion {frm.upper()} -> {to.upper()} not available for this two-port model.")
 
-            # ---- Noise ----
-            noise_val = float(request.form.get("noise_val", 2))
-            X = noisevoltage(noise_val)
-            Y = noisevoltage(4)
-            Z = X + Y
-            results.append("=== Noise ===")
-            results.append(f"X: {X}, id={X.nid}")
-            results.append(f"Y: {Y}, id={Y.nid}")
-            results.append(f"X + Y = {Z}")
+            # fetch converted params
+            converted = getattr(tp, attr_name)
+
+            # converted likely is a 2x2 Sympy/lcapy matrix-like object — convert to readable string
+            results.append(f"Conversion: {frm.upper()} → {to.upper()}")
+            results.append(f"Input ({frm.upper()}) matrix = [[{p11}, {p12}], [{p21}, {p22}]]")
+            results.append(f"Converted ({to.upper()}) parameters:")
+            # show the matrix nicely
+            results.append(str(converted))
+
+            # Also expose element access individually (A11, A12, ...)
+            try:
+                # convert attribute name of param elements: e.g., tp.Y11, tp.Y12, ...
+                # attribute prefix is the uppercase of target (Z, Y, A, H, G, S, T, B)
+                prefix = to.upper()
+                # map 'abcd' -> 'A' and 'b' -> 'B' etc.
+                if prefix == 'ABCD':
+                    prefix = 'A'
+                if prefix == 'ABCD':  # just in case
+                    prefix = 'A'
+                el11 = getattr(tp, f"{prefix}11", None)
+                el12 = getattr(tp, f"{prefix}12", None)
+                el21 = getattr(tp, f"{prefix}21", None)
+                el22 = getattr(tp, f"{prefix}22", None)
+                if any(x is not None for x in (el11, el12, el21, el22)):
+                    results.append(f"{prefix}11 = {el11}")
+                    results.append(f"{prefix}12 = {el12}")
+                    results.append(f"{prefix}21 = {el21}")
+                    results.append(f"{prefix}22 = {el22}")
+            except Exception:
+                # non-fatal; just skip element listing if something odd happened
+                pass
 
         except Exception as e:
-            error = str(e)
+            # capture stacktrace for debugging (optional; remove in production)
+            tb = traceback.format_exc()
+            error = f"{str(e)}\n\n{tb}"
 
     return render_template("index1.html", results=results, error=error, plot_html=plot_html)
 
@@ -4798,53 +4835,58 @@ def tokenize(line):
 def assemble(text: str, base=0x0000):
     lines = text.splitlines()
     # First pass: labels
+    processed = []
     addr = base
     labels = {}
-    processed = []
+
     for raw in lines:
         s = tokenize(raw)
-        if s=="":
+        if not s:
             continue
+
+        # Label?
         if ":" in s:
-            lab, rest = s.split(":",1); labels[lab.strip()] = addr; s = rest.strip()
-            if s=="":
+            lab, rest = s.split(":", 1)
+            labels[lab.strip()] = addr
+            s = rest.strip()
+            if not s: 
                 continue
+
         parts = s.split()
         mnemonic = parts[0].upper()
-        # directives
+        operands = parts[1:] if len(parts) > 1 else []
+
+        # ---- Size estimation ----
         if mnemonic == "ORG":
-            addr = int(parts[1],0); continue
-        if mnemonic == "DB":
-            # bytes
-            args = " ".join(parts[1:]).split(",")
-            for a in args:
-                a=a.strip()
-                if a.startswith("'") and a.endswith("'"):
-                    b = ord(a[1:-1])
-                else:
-                    b = int(a,0)
-                addr += 1
-            processed.append(("DB", args))
+            addr = int(operands[0], 0)
+            processed.append((mnemonic, operands))
             continue
-        # estimate size for labels pass
+
         if mnemonic == "DB":
-            pass
-        elif mnemonic in ("LXI","LDA","STA","LHLD","SHLD","JMP","JNZ","JZ","JC","JNC","CALL"):
-            if mnemonic in ("LXI",):
-                addr += 3
-            else:
-                addr += 3
-        elif mnemonic in ("MVI",):
-            addr += 2
-        elif mnemonic in ("ADI","SUI","ANI","ORI","XRI","CPI","IN","OUT"):
-            addr += 2
-        elif mnemonic in ("PUSH","POP","RET","RST","NOP","HLT","RLC","RRC","CMA"):
-            addr += 1
+            args = " ".join(operands).split(",")
+            addr += len(args)
+            processed.append((mnemonic, args))
+            continue
+
+        # fixed instruction size logic
+        if mnemonic in ("LXI",):
+            size = 3
+        elif mnemonic in ("LDA","STA","LHLD","SHLD","JMP","JNZ",
+                        "JZ","JC","JNC","CALL"):
+            size = 3
+        elif mnemonic in ("MVI","ADI","SUI","ANI","ORI","XRI",
+                        "CPI","IN","OUT"):
+            size = 2
+        elif mnemonic in ("PUSH","POP","RET","RST","NOP",
+                        "HLT","RLC","RRC","CMA"):
+            size = 1
         elif mnemonic == "MOV":
-            addr += 1
+            size = 1
         else:
-            addr += 1
-        processed.append((mnemonic, parts[1:] if len(parts)>1 else []))
+            size = 1
+
+        processed.append((mnemonic, operands))
+        addr += size
 
     # Second pass: emit bytes
     addr = base
@@ -4862,6 +4904,106 @@ def assemble(text: str, base=0x0000):
             continue
         if mnemonic == "ORG":
             addr = int(args[0],0); continue
+                # ADD r (register)
+        if mnemonic == "ADD":
+            r = args[0].upper()
+            if r not in REG_ENC:
+                raise ValueError(f"Unknown register '{r}' in ADD")
+            opcode = 0x80 | REG_ENC[r]
+            out.append(opcode)
+            addr += 1
+            continue
+        # ADC r
+        if mnemonic == "ADC":
+            r = args[0].upper()
+            if r not in REG_ENC:
+                raise ValueError(f"Unknown register '{r}' in ADC")
+            opcode = 0x88 | REG_ENC[r]
+            out.append(opcode)
+            addr += 1
+            continue
+        
+        # SUB r
+        if mnemonic == "SUB":
+            r = args[0].upper()
+            if r not in REG_ENC:
+                raise ValueError(f"Unknown register '{r}' in SUB")
+            opcode = 0x90 | REG_ENC[r]
+            out.append(opcode)
+            addr += 1
+            continue
+
+        # SBB r
+        if mnemonic == "SBB":
+            r = args[0].upper()
+            if r not in REG_ENC:
+                raise ValueError(f"Unknown register '{r}' in SBB")
+            opcode = 0x98 | REG_ENC[r]
+            out.append(opcode)
+            addr += 1
+            continue
+
+        # ANA r
+        if mnemonic == "ANA":
+            r = args[0].upper()
+            if r not in REG_ENC:
+                raise ValueError(f"Unknown register '{r}' in ANA")
+            opcode = 0xA0 | REG_ENC[r]
+            out.append(opcode)
+            addr += 1
+            continue
+
+        # XRA r
+        if mnemonic == "XRA":
+            r = args[0].upper()
+            if r not in REG_ENC:
+                raise ValueError(f"Unknown register '{r}' in XRA")
+            opcode = 0xA8 | REG_ENC[r]
+            out.append(opcode)
+            addr += 1
+            continue
+
+        # ORA r
+        if mnemonic == "ORA":
+            r = args[0].upper()
+            if r not in REG_ENC:
+                raise ValueError(f"Unknown register '{r}' in ORA")
+            opcode = 0xB0 | REG_ENC[r]
+            out.append(opcode)
+            addr += 1
+            continue
+
+        # CMP r
+        if mnemonic == "CMP":
+            r = args[0].upper()
+            if r not in REG_ENC:
+                raise ValueError(f"Unknown register '{r}' in CMP")
+            opcode = 0xB8 | REG_ENC[r]
+            out.append(opcode)
+            addr += 1
+            continue
+
+        # INR r
+        if mnemonic == "INR":
+            r = args[0].upper()
+            if r not in REG_ENC:
+                raise ValueError(f"Unknown register '{r}' in INR")
+            base = 0x04
+            opcode = base | (REG_ENC[r] << 3)
+            out.append(opcode)
+            addr += 1
+            continue
+
+        # DCR r
+        if mnemonic == "DCR":
+            r = args[0].upper()
+            if r not in REG_ENC:
+                raise ValueError(f"Unknown register '{r}' in DCR")
+            base = 0x05
+            opcode = base | (REG_ENC[r] << 3)
+            out.append(opcode)
+            addr += 1
+            continue
 
         if mnemonic == "MOV":
             # args like B,A
@@ -4886,16 +5028,39 @@ def assemble(text: str, base=0x0000):
             else: opc=0x00
             out += [opc, imm & 0xFF, (imm>>8)&0xFF]; addr+=3; continue
 
-        if mnemonic in ("LDA","STA","LHLD","SHLD","JMP","JNZ","JZ","JC","JNC","CALL"):
-            label_or_addr = args[0]
-            val = None
-            if label_or_addr in labels:
-                val = labels[label_or_addr]
+        if mnemonic in ("LDA", "STA", "LHLD", "SHLD",
+                        "JMP", "JNZ", "JZ", "JC", "JNC", "CALL"):
+
+            operand = args[0]
+
+            # Resolve label or numeric address
+            if operand in labels:
+                val = labels[operand]
             else:
-                val = int(label_or_addr,0)
-            baseopc = {"LDA":0x3A,"STA":0x32,"LHLD":0x2A,"SHLD":0x22,
-                       "JMP":0xC3,"JNZ":0xC2,"JZ":0xCA,"JC":0xDA,"JNC":0xD2,"CALL":0xCD}[mnemonic]
-            out += [baseopc, val & 0xFF, (val>>8)&0xFF]; addr+=3; continue
+                # Correct parsing of hex (0x0E), decimal (14), char, etc.
+                val = int(operand, 0)
+
+            # Opcode lookup (correct)
+            baseopc = {
+                "LDA":  0x3A,
+                "STA":  0x32,
+                "LHLD": 0x2A,
+                "SHLD": 0x22,
+                "JMP":  0xC3,
+                "JNZ":  0xC2,
+                "JZ":   0xCA,
+                "JC":   0xDA,
+                "JNC":  0xD2,
+                "CALL": 0xCD
+            }[mnemonic]
+
+            # Correct little-endian order!
+            out.append(baseopc)
+            out.append(val & 0xFF)       # LOW BYTE
+            out.append((val >> 8) & 0xFF)  # HIGH BYTE
+
+            addr += 3
+            continue
 
         if mnemonic in ("ADI","SUI","ANI","ORI","XRI","CPI","IN","OUT"):
             imm = args[0]
@@ -4942,59 +5107,28 @@ def sim8085():
     result = None
     error = None
 
-    # 8085 Register Set
-    registers = {"A": 0, "B": 0, "C": 0, "D": 0, "E": 0, "H": 0, "L": 0}
-    memory = [0] * 65536
-    pc = 0  # Program Counter
-
-    def execute_instruction(instr):
-        parts = instr.strip().split()
-        opcode = parts[0].upper()
-
-        # MOV r1,r2
-        if opcode == "MOV":
-            dst, src = parts[1].split(",")
-            registers[dst] = registers[src]
-
-        # MVI r, data
-        elif opcode == "MVI":
-            dst, data = parts[1].split(",")
-            registers[dst] = int(data, 16)
-
-        # ADD r
-        elif opcode == "ADD":
-            r = parts[1]
-            registers["A"] = (registers["A"] + registers[r]) & 0xFF
-
-        # INR r
-        elif opcode == "INR":
-            r = parts[1]
-            registers[r] = (registers[r] + 1) & 0xFF
-
-        # HLT
-        elif opcode == "HLT":
-            return False
-
-        else:
-            raise Exception(f"Unsupported instruction: {instr}")
-
-        return True
-
     if request.method == "POST":
         code = request.form.get("program")
+
         try:
-            instructions = code.split("\n")
+            # Assemble source
+            machine_code = assemble(code)
 
-            for instr in instructions:
-                instr = instr.strip()
-                if instr == "":
-                    continue
-                if not execute_instruction(instr):
-                    break
+            # Create CPU
+            cpu = CPU8085()
+            cpu.load_program(machine_code, addr=0x0000)
 
+            # Run
+            trace = cpu.run(50000)
+
+            # Collect output
             result = {
-                "registers": registers,
-                "memory_sample": memory[:20]  # show small chunk
+                "registers": cpu.reg,
+                "flags": cpu.flags,
+                "PC": cpu.PC,
+                "SP": cpu.SP,
+                "trace": trace[:50],       # show first 50 steps
+                "memory": cpu.memory[:256] 
             }
 
         except Exception as e:
@@ -5034,10 +5168,165 @@ def IDFT():
             result = {"error": str(e)}
 
     return render_template("IDFT.html", result=result)
+####################################################################################################
+from scipy.signal import butter, filtfilt
+def fig_to_base64_png():
+    buf = BytesIO()
+    plt.tight_layout()
+    plt.savefig(buf, format="png", bbox_inches="tight")
+    buf.seek(0)
+    b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+    plt.close()
+    return f"data:image/png;base64,{b64}"
 
+def lowpass_filter(sig, fs, cutoff_hz, order=4):
+    b, a = butter(order, cutoff_hz / (fs/2), btype='low')
+    return filtfilt(b, a, sig)
+
+@app.route('/ask', methods=['GET', 'POST'])
+def ask():
+    """
+    Single unified route for ASK/FSK/PSK with client-side tabs.
+    - GET: serve the page
+    - POST (AJAX): run requested modulation/demod and return plot HTML (base64 PNG wrapped in <img>)
+    """
+    if request.method == 'GET':
+        # Pass the raw local image path (will be transformed to URL by environment if needed)
+        example_file_url = "/mnt/data/b878eb2d-300d-4395-9650-8c4756a055fc.png"
+        return render_template("ask_suite.html", example_file_url=example_file_url)
+
+    # POST: AJAX request with JSON form-like data
+    data = request.get_json() or {}
+    mode = data.get("mode", "ASK").upper()
+
+    # Common parameters with sensible defaults
+    fs = int(float(data.get("fs", 5000)))
+    duration = float(data.get("duration", 1))
+    t = np.arange(0, duration, 1/fs)
+
+    # Prepare a default bit sequence for demonstration (could be provided by user)
+    bits = data.get("bits")
+    if bits:
+        try:
+            bit_list = [int(x) for x in bits.strip().split()]
+        except Exception:
+            bit_list = [1,0,1,1,0]
+    else:
+        bit_list = [1, 0, 1, 1, 0]
+
+    # Build a NRZ message waveform from bits
+    bitrate = float(data.get("bitrate", 5.0))
+    Tb = 1.0/bitrate
+    # Build message using integer index ranges (SAFE)
+    samples_per_bit = int(fs * Tb)
+    msg = np.zeros_like(t)
+
+    for i, b in enumerate(bit_list):
+        start = i * samples_per_bit
+        end = start + samples_per_bit
+        if start >= len(t):
+            break
+        msg[start:end] = b
+
+
+    # Carrier or frequency params
+    fc = float(data.get("fc", 50.0))
+    f1 = float(data.get("f1", 60.0))  # for FSK freq for bit=1
+    f0 = float(data.get("f0", 40.0))  # for FSK freq for bit=0
+    A1 = float(data.get("A1", 1.0))   # ASK amplitude for 1
+    A0 = float(data.get("A0", 0.0))   # ASK amplitude for 0
+    phase0 = 0.0
+
+    # Prepare figure(s)
+    try:
+        if mode == "ASK":
+            carrier = np.sin(2*np.pi*fc*t + phase0)
+            modulated = (A1 * (msg==1) + A0 * (msg==0)) * carrier
+
+            # Demod (envelope detection via absolute + LPF)
+            envelope = np.abs(modulated)
+            demod = lowpass_filter(envelope, fs, cutoff_hz=bitrate*1.5)
+            # normalize envelope to bit levels
+            demod_norm = (demod - demod.min()) / (demod.max() - demod.min() + 1e-12)
+
+            # Plot message, modulated, demod
+            fig, ax = plt.subplots(3,1,figsize=(9,7))
+            ax[0].plot(t, msg); ax[0].set_title("ASK — Message (NRZ bits)")
+            ax[1].plot(t, modulated); ax[1].set_title("ASK Modulated Signal")
+            ax[2].plot(t, demod_norm, label="Demod (Normalized)"); ax[2].plot(t, msg, '--', alpha=0.6, label="Original bits")
+            ax[2].set_title("Demodulated (Envelope + LPF)")
+            ax[2].legend()
+            for a in ax: a.grid(False)
+
+        elif mode == "FSK":
+            # Frequency Shift Keying: choose instantaneous frequency based on bits
+            inst_phase = np.zeros_like(t)
+            modulated = np.zeros_like(t)
+            for i, b in enumerate(bit_list):
+                idx = (t >= i*Tb) & (t < (i+1)*Tb)
+                f_inst = f1 if b==1 else f0
+                modulated[idx] = np.cos(2*np.pi*f_inst*t[idx])
+
+            # Demodulation: energy detection using two bandpass approximations via filtering
+            # Simpler approach here: correlate with both candidate carriers and compare magnitudes
+            ref1 = np.cos(2*np.pi*f1*t)
+            ref0 = np.cos(2*np.pi*f0*t)
+            # short-time correlation via windowed dot product over each bit interval
+            rec = np.zeros_like(t)
+            for i in range(len(bit_list)):
+                idx = (t >= i*Tb) & (t < (i+1)*Tb)
+                s_seg = modulated[idx]
+                if len(s_seg) == 0: continue
+                corr1 = np.abs(np.dot(s_seg, np.cos(2*np.pi*f1*t[idx])))
+                corr0 = np.abs(np.dot(s_seg, np.cos(2*np.pi*f0*t[idx])))
+                val = 1 if corr1 > corr0 else 0
+                rec[idx] = val
+
+            fig, ax = plt.subplots(3,1,figsize=(9,7))
+            ax[0].plot(t, msg); ax[0].set_title("FSK — Message (NRZ bits)")
+            ax[1].plot(t, modulated); ax[1].set_title("FSK Modulated Signal (binary freq shifts)")
+            ax[2].plot(t, rec, label="Detected bits"); ax[2].plot(t, msg, '--', alpha=0.6, label="Original bits")
+            ax[2].set_title("FSK Demodulation (Correlation detection)")
+            ax[2].legend()
+            for a in ax: a.grid(False)
+
+        elif mode == "PSK":
+            # Binary PSK (BPSK): phase 0 for bit=1, pi for bit=0 (or vice-versa)
+            modulated = np.zeros_like(t)
+            for i, b in enumerate(bit_list):
+                idx = (t >= i*Tb) & (t < (i+1)*Tb)
+                phase = 0.0 if b==1 else np.pi
+                modulated[idx] = np.cos(2*np.pi*fc*t[idx] + phase)
+
+            # Demodulation: coherent detection (multiply by carrier and LPF)
+            mixed = modulated * np.cos(2*np.pi*fc*t)
+            demod_lp = lowpass_filter(mixed, fs, cutoff_hz=bitrate*1.5)
+            # decision per bit interval: average sign
+            rec = np.zeros_like(t)
+            for i in range(len(bit_list)):
+                idx = (t >= i*Tb) & (t < (i+1)*Tb)
+                seg = demod_lp[idx]
+                if len(seg)==0: continue
+                rec_bit = 1 if np.mean(seg) > 0 else 0
+                rec[idx] = rec_bit
+
+            fig, ax = plt.subplots(3,1,figsize=(9,7))
+            ax[0].plot(t, msg); ax[0].set_title("PSK — Message (NRZ bits)")
+            ax[1].plot(t, modulated); ax[1].set_title("BPSK Modulated Signal")
+            ax[2].plot(t, rec, label="Detected bits"); ax[2].plot(t, msg, '--', alpha=0.6, label="Original bits")
+            ax[2].set_title("PSK Demodulation (Coherent)")
+            ax[2].legend()
+            for a in ax: a.grid(False)
+
+        else:
+            return jsonify({"error": "Unknown mode"}), 400
+
+        # return PNG base64 wrapped in <img> html so client can inject easily
+        img_tag = f'<img src="{fig_to_base64_png()}" alt="{mode} plot" style="width:100%;">'
+        return jsonify({"plot_html": img_tag, "mode": mode})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 ####################################################################################################
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
-
-
-
