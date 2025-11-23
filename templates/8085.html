@@ -3,147 +3,292 @@
 <head>
     <meta charset="UTF-8">
     <title>8085 Simulator</title>
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 30px;
-            background-color: #f4f6f8;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 25px;
+            background: #eef1f5;
         }
+
         h1 {
-            color: #333;
+            text-align: center;
+            color: #222;
+            margin-bottom: 20px;
         }
+
+        .card {
+            background: white;
+            padding: 18px;
+            border-radius: 12px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+
         textarea {
             width: 100%;
-            height: 200px;
+            height: 220px;
             font-family: monospace;
             font-size: 15px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-            padding: 10px;
-            background: #fff;
+            border-radius: 10px;
+            border: 1px solid #bbb;
+            padding: 12px;
+            resize: vertical;
         }
+
         button {
             background-color: #007bff;
             color: white;
-            padding: 8px 20px;
+            padding: 10px 22px;
             border: none;
-            border-radius: 5px;
-            margin-top: 10px;
+            border-radius: 8px;
+            font-size: 15px;
             cursor: pointer;
+            transition: 0.2s;
         }
         button:hover {
             background-color: #0056b3;
         }
+
         pre {
-            background: #fff;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #ddd;
+            background: #1b1b1b;
+            color: #00e676;
+            padding: 14px;
+            border-radius: 10px;
+            overflow-x: auto;
+            font-size: 14px;
         }
+
         .error {
             color: red;
             font-weight: bold;
+            padding: 12px;
+            background: #ffe6e6;
+            border-left: 6px solid red;
+            border-radius: 6px;
         }
-        .result {
-            margin-top: 20px;
+
+        hr {
+            border: none;
+            height: 1px;
+            background: #ddd;
+            margin: 20px 0;
         }
+
+        .copy-btn {
+            float: right;
+            margin-top: -32px;
+            margin-right: 10px;
+            padding: 4px 10px;
+            background: #444;
+            color: white;
+            border-radius: 5px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        details {
+            margin-top: 12px;
+        }
+
+        summary {
+            cursor: pointer;
+            font-weight: 600;
+            color: #007bff;
+            font-size: 15px;
+        }
+        .mem-table-container {
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+
+        .mem-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .mem-table th {
+            background: #007bff;
+            color: white;
+            padding: 6px;
+            text-align: center;
+        }
+
+        .mem-table td {
+            padding: 5px;
+            text-align: center;
+            border: 1px solid #ccc;
+            background: #fafafa;
+            font-family: monospace;
+        }
+
+        .mem-table tr:nth-child(even) td {
+            background: #f0f4ff;
+        }
+
     </style>
 </head>
+
 <body>
 
-<h1>8085 Simulator</h1>
+<h1>8085 Microprocessor Simulator </h1>
 
-<form method="POST" action="/8085">
-    <label><b>Enter your 8085 Assembly Code:</b></label><br><br>
-    <textarea name="program" placeholder="Example:
-MVI A,05
-MVI B,03
+<div class="card">
+    <div class="card" style="background:#e8f2ff; border-left:6px solid #007bff; margin-top:15px;">
+    <h3 style="color:#004a99;">📘 How to Write 8085 Program</h3>
+    <ul style="line-height:1.6; color:#003366; padding-left:18px; font-size:14px;">
+        <li>Write <b>one instruction per line</b>.</li>
+        <li>Use <b>hex values</b> with <code>0x</code> prefix (e.g., <code>MVI A,0x0A</code>).</li>
+        <li>Labels must end with a colon — <code>LOOP:</code>.</li>
+        <li>Jumps/calls may use <b>labels or addresses</b> — <code>JNZ LOOP</code>, <code>JMP 0x2000</code>.</li>
+        <li>Program must end with <code>HLT</code>.</li>
+        <li>Common instructions: <b>MVI, MOV, ADD, SUB, INR, DCR, JMP, JNZ, JZ, STA, LDA, CALL, RET</b>.</li>
+        <li>Registers: <code>A, B, C, D, E, H, L, M</code>.</li>
+    </ul>
+
+    <p style="margin-top:8px; font-size:14px; color:#003366;">
+        <b>Example:</b><br>
+        <pre style="background:white; border:1px solid #bcd4ff; padding:10px; border-radius:8px; font-size:13px; color:#003366;">
+MVI A,0x05
+MVI B,0x03
 ADD B
-HLT">{{ request.form.program }}</textarea><br>
-    <button type="submit">Run Simulation</button>
-</form>
+HLT
+        </pre>
+    </p>
+</div>
+    <h3>Enter Your 8085 Assembly Code</h3>
+    <form method="POST" action="/8085">
+       <textarea name="program">{{ request.form.program or
+"MVI C,0x0A\nMVI A,0x0A\nMVI B,0x0A\nADD B\nINR C\nSTA 0x0D\nMOV A,C\nSTA 0x0E\nSUB C\nHLT"
+}}</textarea>
+        <button type="submit">▶ Run Simulation</button>
+    </form>
+</div>
 
 {% if error %}
-<div class="error">Error: {{ error }}</div>
+<div class="card error">Error: {{ error }}</div>
 {% endif %}
 
 {% if result %}
-<div class="result">
+<div class="card">
     <h2>Simulation Result</h2>
-    <h3>Registers</h3>
-    <pre>{{ result.registers | tojson(indent=4) }}</pre>
 
-    <h3>Memory (first 20 bytes)</h3>
-    <pre>{{ result.memory_sample }}</pre>
+    <h3>Registers</h3>
+    <button class="copy-btn" onclick="copyText('regbox')">Copy</button>
+    <pre id="regbox">{{ result.registers | tojson(indent=4) }}</pre>
+
+    <h3>Flags</h3>
+    <button class="copy-btn" onclick="copyText('flagbox')">Copy</button>
+    <pre id="flagbox">{{ result.flags | tojson(indent=4) }}</pre>
+
+    <h3>Program Counter & Stack Pointer</h3>
+    <pre>PC = {{ result.PC }}<br>SP = {{ result.SP }}</pre>
+
+   <h3>Memory Viewer</h3>
+
+    <details open>
+        <summary><b>📦 Memory (0x00 – 0xFF)</b> — Click to expand</summary>
+        <div class="mem-table-container">
+            <table class="mem-table">
+                <thead>
+                    <tr>
+                        <th>Addr</th>
+                        {% for i in range(16) %}
+                            <th>{{ "%X"|format(i) }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in range(0, 256, 16) %}
+                    <tr>
+                        <td><b>{{ "%02X"|format(row) }}</b></td>
+                        {% for col in range(16) %}
+                            <td>{{ "%02X"|format(result.memory[row+col]) }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </details>
+    <details>
+        <summary>📝 Execution Trace (first 50 steps)</summary>
+        <pre>{{ result.trace }}</pre>
+    </details>
 </div>
 {% endif %}
 
-   <!-- Wikipedia Assistant -->
-    <div class="assistant-container">
-        <h3>🧠 Wikipedia Assistant</h3>
-        <p style="color:#555;">
-            Learn about <strong>8085 microprocessor</strong>
-            Top two relevant Wikipedia summaries are auto-loaded below — click the link to open the full article.
-        </p>
+<hr>
 
-        <textarea id="wiki-query" rows="3" style="width:100%;">8085 microprocessor</textarea><br>
-        <button type="button" onclick="searchWiki()" class="btn-primary">Search Wikipedia</button>
-        <button type="button" onclick="refreshWiki()" class="btn-secondary" style="margin-left:8px;">🔄 Refresh Content</button>
+<!-- Wikipedia Assistant -->
+<div class="card">
+    <h3>📘 Wikipedia Assistant</h3>
+    <p style="color:#444;margin-top:-8px;">
+        Learn more about 8085 — summaries auto-loaded from Wikipedia.
+    </p>
 
-        <div id="wiki-result">⏳ Loading Wikipedia data...</div>
-    </div>
+    <textarea id="wiki-query" rows="2" style="width:100%;">8085 microprocessor</textarea>
+    <button onclick="searchWiki()">Search Wikipedia</button>
 
-    <script>
-    async function searchWiki() {
-        const query = document.getElementById("wiki-query").value.trim();
-        const resultDiv = document.getElementById("wiki-result");
-        if (!query) { resultDiv.innerHTML = "❌ Enter a search query."; return; }
-        resultDiv.innerHTML = "⏳ Fetching information from Wikipedia...";
+    <div id="wiki-result" style="margin-top:14px;">⏳ Loading Wikipedia data...</div>
+</div>
 
-        try {
-            const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=2&prop=extracts&exintro=true&explaintext=true`;
-            const response = await fetch(url);
-            const data = await response.json();
+<script>
+function copyText(id) {
+    const text = document.getElementById(id).innerText;
+    navigator.clipboard.writeText(text);
+    alert("Copied!");
+}
 
-            if (!data.query || !data.query.pages) {
-                resultDiv.innerHTML = "❌ No Wikipedia data found for this query.";
-                return;
-            }
+async function searchWiki() {
+    const query = document.getElementById("wiki-query").value.trim();
+    const resultDiv = document.getElementById("wiki-result");
+    if (!query) return resultDiv.innerHTML = "❌ Enter a search query.";
+    resultDiv.innerHTML = "⏳ Searching...";
 
-            const pages = Object.values(data.query.pages).sort((a,b) => (a.index||0)-(b.index||0));
-            let html = "";
-            for (const page of pages) {
-                const title = page.title;
-                const extract = page.extract ? page.extract.split(/(?<=\.)\s+/).slice(0, 4).join(' ') : "(No summary available)";
-                const urlPage = "https://en.wikipedia.org/?curid=" + page.pageid;
+    try {
+        const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=2&prop=extracts&exintro=true&explaintext=true`;
+        const response = await fetch(url);
+        const data = await response.json();
 
-                html += `
-                    <div style="margin-bottom:14px;">
-                        <h4 style="margin:6px 0 8px 0;color:#0066cc;">${title}</h4>
-                        <p style="line-height:1.6;margin:0 0 8px 0;color:#333;">${extract}</p>
-                        <a href="${urlPage}" target="_blank" rel="noopener noreferrer">🔗 Read full article</a>
-                    </div>
-                    <hr class="small">
-                `;
-            }
-
-            html += `<p style="text-align:center;color:#666;margin-top:8px;">— End of summary —</p>`;
-            resultDiv.innerHTML = html;
-        } catch (err) {
-            console.error(err);
-            resultDiv.innerHTML = "⚠️ Error fetching Wikipedia content.";
+        if (!data.query || !data.query.pages) {
+            resultDiv.innerHTML = "❌ No data found.";
+            return;
         }
-    }
 
-    function refreshWiki() {
-        const resultDiv = document.getElementById("wiki-result");
-        resultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
-        resultDiv.innerHTML = "🔁 Refreshing Wikipedia content...";
-        setTimeout(searchWiki, 600);
-    }
+        const pages = Object.values(data.query.pages)
+            .sort((a,b) => (a.index || 0) - (b.index || 0));
 
-    window.onload = function() { searchWiki(); };
-    </script>
+        let html = "";
+        for (const page of pages) {
+            const title = page.title;
+            const extract = page.extract ? page.extract.split(/(?<=\.)\s+/).slice(0,4).join(" ") : "(No summary)";
+            const pageURL = "https://en.wikipedia.org/?curid=" + page.pageid;
+
+            html += `
+                <div>
+                    <h4 style="color:#007bff">${title}</h4>
+                    <p>${extract}</p>
+                    <a href="${pageURL}" target="_blank">🔗 Read more</a>
+                    <hr>
+                </div>
+            `;
+        }
+
+        resultDiv.innerHTML = html;
+    } catch (err) {
+        resultDiv.innerHTML = "⚠️ Error loading Wikipedia.";
+    }
+}
+
+window.onload = searchWiki;
+</script>
 
 </body>
 </html>
